@@ -267,12 +267,7 @@ INDUSTRY_COMPANY_KEYWORDS = [
     end
 
     auto_thumper_command = auto_thumper_command?(body)
-    pb_support_command = defined?(Comms::PbSmsCommands) && Comms::PbSmsCommands.recognized?(body)
-    stage = if pb_support_command
-      find_or_create_pb_support_stage!(from: from, to: to, body: body, provider: "twilio", payload: payload)
-    else
-      find_stage_for_sms(from: from, to: to, force_broad: auto_thumper_command)
-    end
+    stage = find_stage_for_sms(from: from, to: to, force_broad: auto_thumper_command)
 
     if stage.present?
       mark_inbound_sms_receipt_matched!(receipt, stage)
@@ -331,12 +326,7 @@ INDUSTRY_COMPANY_KEYWORDS = [
     end
 
     auto_thumper_command = auto_thumper_command?(body)
-    pb_support_command = defined?(Comms::PbSmsCommands) && Comms::PbSmsCommands.recognized?(body)
-    stage = if pb_support_command
-      find_or_create_pb_support_stage!(from: from, to: to, body: body, provider: "haymarket", payload: payload)
-    else
-      find_stage_for_sms(from: from, to: to, force_broad: auto_thumper_command)
-    end
+    stage = find_stage_for_sms(from: from, to: to, force_broad: auto_thumper_command)
 
     if stage.present?
       mark_inbound_sms_receipt_matched!(receipt, stage)
@@ -510,97 +500,6 @@ INDUSTRY_COMPANY_KEYWORDS = [
     end
 
     scope.order(updated_at: :desc).first
-  end
-
-  def find_or_create_pb_support_stage!(from:, to:, body:, provider:, payload: {})
-    return unless defined?(Comms::PbSmsCommands) && Comms::PbSmsCommands.recognized?(body)
-
-    organization = organization_for_inbound_sms(to: to, provider: provider, payload: payload)
-    return if organization.blank?
-
-    user = organization.users.order(:id).first
-    return if user.blank?
-
-    digits = from.to_s.gsub(/\D/, "")
-    return if digits.length < 10
-
-    record = organization.crm_records
-      .where(record_type: "contact")
-      .where("regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') LIKE ?", "%#{digits.last(10)}")
-      .order(updated_at: :desc)
-      .first
-    record ||= organization.crm_records.create!(
-      owner: user,
-      record_type: "contact",
-      status: "active",
-      name: "313.cash SMS member #{digits.last(4)}",
-      phone: from,
-      source: "pb_sms_support",
-      source_uid: "phone:#{digits}",
-      properties: {
-        "support_lane" => "pb_sms_support",
-        "manual_comms_contact_phone_digits" => digits,
-        "created_from_inbound_command" => true
-      }
-    )
-
-    stage = record.crm_record_artifacts
-      .where(organization: organization, artifact_type: "comm_staging")
-      .where.not(status: "archived")
-      .where("metadata ->> 'support_lane' = ?", "pb_sms_support")
-      .order(updated_at: :desc)
-      .first
-    stage ||= record.crm_record_artifacts.build(
-      organization: organization,
-      user: user,
-      artifact_type: "comm_staging",
-      title: "313.cash SMS support: #{digits.last(4)}"
-    )
-
-    now = Time.current
-    phone_option = { "id" => "pb-sms-phone", "name" => "313.cash member", "value" => from, "reason" => "Inbound 313.cash SMS command" }
-    stage.update!(
-      status: "staged",
-      user: stage.user || user,
-      generated_at: now,
-      content_type: "application/json",
-      metadata: stage.metadata.to_h.merge(
-        "stage_type" => "manual_comms",
-        "support_lane" => "pb_sms_support",
-        "company_name" => "313.cash",
-        "deal_name" => "313.cash SMS member #{digits.last(4)}",
-        "comm_kit_direction" => "support_in",
-        "comm_kit_direction_label" => "313.cash SUPPORT",
-        "contact_options" => [{ "id" => "pb-sms-contact", "name" => "313.cash member", "company" => "313.cash", "record_type" => "support", "reason" => "Inbound command" }],
-        "phone_options" => [phone_option],
-        "selected_contact_id" => "pb-sms-contact",
-        "selected_phone_id" => "pb-sms-phone",
-        "manual_comms_contact_phone_digits" => digits,
-        "sms_listener_active" => true,
-        "sms_listener_to" => from,
-        "sms_listener_from" => to,
-        "sms_listener_until" => 90.days.from_now.iso8601,
-        "sms_autopilot_enabled" => true,
-        "sms_autopilot_started_at" => stage.metadata.to_h["sms_autopilot_started_at"].presence || now.iso8601,
-        "sms_autopilot_last_status" => "listening",
-        "comms_board_state" => "active",
-        "comms_command_last_channel" => "sms",
-        "comms_command_last_status" => "received",
-        "pb_sms_command_last" => body.to_s.squish.upcase,
-        "pb_sms_command_last_at" => now.iso8601
-      ).merge(Comms::RagProfile.metadata_for(Comms::RagProfile::SUPPORT_KEY, at: now, organization: organization))
-    )
-    stage
-  rescue ActiveRecord::RecordNotUnique
-    retry_stage = CrmRecordArtifact
-      .where(organization: organization, artifact_type: "comm_staging")
-      .where("metadata ->> 'support_lane' = ?", "pb_sms_support")
-      .where("regexp_replace(coalesce(metadata ->> 'manual_comms_contact_phone_digits', ''), '[^0-9]', '', 'g') LIKE ?", "%#{digits.last(10)}")
-      .order(updated_at: :desc)
-      .first
-    return retry_stage if retry_stage.present?
-
-    raise
   end
 
   def sms_fallback_lookup_limit
@@ -1455,8 +1354,8 @@ end
     ensure_inbound_language_processed!(stage, sid)
     body = translated_inbound_body_for_reply(stage, body, sid)
     auto_thumper_reset = auto_thumper_command?(body)
-    pb_support_lane = defined?(Comms::RagProfile) && Comms::RagProfile.support?(stage)
-    if !pb_support_lane && !auto_thumper_reset && handoff_inbound_sms_if_needed!(
+    support_rag_lane = defined?(Comms::RagProfile) && Comms::RagProfile.support?(stage)
+    if !support_rag_lane && !auto_thumper_reset && handoff_inbound_sms_if_needed!(
       stage,
       body,
       source: "inbound_reply_job",
@@ -1472,7 +1371,7 @@ end
       }
     end
 
-    fast_body = (auto_thumper_reset || pb_support_lane) ? nil : fast_inbound_sms_reply(stage, body)
+    fast_body = (auto_thumper_reset || support_rag_lane) ? nil : fast_inbound_sms_reply(stage, body)
     result = if fast_body.present?
       {
         "body" => fast_body,

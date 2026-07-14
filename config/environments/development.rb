@@ -35,7 +35,7 @@ Rails.application.configure do
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :local
 
-  # Use the same Postmark env vars as Pinball when available during bootstrap.
+  # Use configured Postmark credentials when available during bootstrap.
   postmark_api_token = ENV["POSTMARK_API_TOKEN"].presence || ENV["POSTMARK_API_KEY"].presence || ENV["postmark_api_key"].presence
   config.action_mailer.raise_delivery_errors = postmark_api_token.present?
 

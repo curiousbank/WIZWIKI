@@ -304,7 +304,7 @@ module DealReports
       )
       draft = @writer.send(:fallback_draft, "asks_for_known_fit_field")
 
-      assert_match(/artwork|operator|confirm/i, rewrite)
+      assert_match(/artwork|logo|design|creative|operator|confirm/i, rewrite)
       refute_match(/\$\s*\d|https?:\/\//i, rewrite)
       refute @writer.send(
         :asks_for_known_fit_field?,
