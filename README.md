@@ -10,6 +10,42 @@ The repository starts with fresh history and contains code, neutral configuratio
 templates, and synthetic test fixtures. It does not ship customer records, production
 credentials, proprietary knowledge packs, live product claims, or runtime exports.
 
+## WIZWIKI, Alice Brain, and Rotary Relay
+
+WIZWIKI is designed to be used with
+[Alice Brain](https://github.com/curiousbank/alice-brain) and
+[Rotary Relay](https://github.com/curiousbank/rotary-relay). The three projects have
+separate trust boundaries so local compute can grow without handing application or
+infrastructure authority to a worker node.
+
+| Project | Responsibility | Explicit boundary |
+| --- | --- | --- |
+| **WIZWIKI** | Owns users, organizations, CRM state, approved knowledge, job policy, queues, validation, audit records, and external-action gates. | It is the application and controller, not the model runtime on every oven. |
+| **Alice Brain** | Turns a local Mac or Linux machine into an outbound-only AI Oven that polls scoped HTTPS jobs, runs approved Qwen/Ollama models, and returns results for validation. | It receives no production database, object-storage, or wallet private keys and cannot accept or pay its own work. |
+| **Rotary Relay (RoRe)** | Provides the private coordination plane: node identity, health, receipts, direct inboxes, broadcasts, and advisory work claims across trusted machines and agents. | It is not the production job-security boundary, database, artifact store, payment ledger, or wallet. |
+
+### Why Alice?
+
+Model execution should be replaceable, local, and least-privileged. Alice makes spare
+computers useful as narrowly scoped ovens while WIZWIKI retains policy and authority.
+That keeps private infrastructure credentials off worker nodes, lets each oven report
+the model that actually performed a job, and makes local Qwen capacity independently
+deployable from the Rails application.
+
+### Why RoRe?
+
+Once several humans, agents, and ovens share work, coordination becomes a separate
+problem from inference. RoRe gives the network a small nervous system for presence,
+capability signals, receipts, diagnostics, and collision-resistant work claims without
+turning coordination messages into permission to mutate WIZWIKI. Its Redis transport
+must remain private; use per-node ACLs or a broker API before extending it beyond one
+trusted administrative boundary.
+
+The intended flow is: WIZWIKI issues a scoped job over outbound HTTPS, Alice computes
+and returns the result, and WIZWIKI validates and records it. RoRe may carry health and
+coordination events alongside that flow, but it does not bypass the HTTPS worker or
+controller validation boundaries.
+
 ## What it does
 
 - manages organization-scoped contacts, companies, deals, call blocks, and artifacts
