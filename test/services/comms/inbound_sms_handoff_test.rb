@@ -263,46 +263,48 @@ module Comms
     end
 
     test "consultant request followed by call me after 4 completes the handoff" do
-      stage = comm_stage([
-        inbound("Can I get a consultant to contact me?", 3.minutes.ago),
-        outbound("What is the best way for them to reach you: email, call, or text?", 2.minutes.ago),
-        inbound("Call me after 4", 1.minute.ago)
-      ])
-      slack_calls = []
+      travel_to Time.find_zone("Central Time (US & Canada)").local(2026, 7, 13, 10, 36) do
+        stage = comm_stage([
+          inbound("Can I get a consultant to contact me?", 3.minutes.ago),
+          outbound("What is the best way for them to reach you: email, call, or text?", 2.minutes.ago),
+          inbound("Call me after 4", 1.minute.ago)
+        ])
+        slack_calls = []
 
-      assert InboundSmsHandoff.required?("Can I get a consultant to contact me?", stage: stage)
+        assert InboundSmsHandoff.required?("Can I get a consultant to contact me?", stage: stage)
 
-      first_result = InboundSmsHandoff.call(
-        stage: stage,
-        body: "Can I get a consultant to contact me?",
-        source: "test"
-      )
-      refute first_result.handled
-      assert first_result.review_draft_saved
-      assert_equal true, stage.reload.metadata["sms_autopilot_handoff_contact_permission"]
-
-      legacy_metadata = stage.metadata.to_h.deep_dup.except("sms_autopilot_handoff_contact_permission")
-      stage.update!(metadata: legacy_metadata)
-      assert InboundSmsHandoff.contact_collection_response?(stage, "Call me after 4")
-
-      with_slack_handoff_stub(slack_calls, true) do
-        second_result = InboundSmsHandoff.call(
+        first_result = InboundSmsHandoff.call(
           stage: stage,
-          body: "Call me after 4",
-          source: "inbound_reply_job"
+          body: "Can I get a consultant to contact me?",
+          source: "test"
         )
+        refute first_result.handled
+        assert first_result.review_draft_saved
+        assert_equal true, stage.reload.metadata["sms_autopilot_handoff_contact_permission"]
 
-        assert second_result.slack_posted
-        assert second_result.review_draft_saved
+        legacy_metadata = stage.metadata.to_h.deep_dup.except("sms_autopilot_handoff_contact_permission")
+        stage.update!(metadata: legacy_metadata)
+        assert InboundSmsHandoff.contact_collection_response?(stage, "Call me after 4")
+
+        with_slack_handoff_stub(slack_calls, true) do
+          second_result = InboundSmsHandoff.call(
+            stage: stage,
+            body: "Call me after 4",
+            source: "inbound_reply_job"
+          )
+
+          assert second_result.slack_posted
+          assert second_result.review_draft_saved
+        end
+
+        assert_equal 1, slack_calls.length
+        metadata = stage.reload.metadata
+        assert_equal false, metadata["sms_autopilot_handoff_contact_pending"]
+        assert_equal "call", metadata["sms_autopilot_handoff_contact_preference"]
+        assert_equal "after 4", metadata["sms_autopilot_handoff_contact_time"].downcase
+        assert_includes metadata["comms_command_sms_draft_body"], "by phone"
+        assert_includes metadata["comms_command_sms_draft_body"], "around after 4"
       end
-
-      assert_equal 1, slack_calls.length
-      metadata = stage.reload.metadata
-      assert_equal false, metadata["sms_autopilot_handoff_contact_pending"]
-      assert_equal "call", metadata["sms_autopilot_handoff_contact_preference"]
-      assert_equal "after 4", metadata["sms_autopilot_handoff_contact_time"].downcase
-      assert_includes metadata["comms_command_sms_draft_body"], "by phone"
-      assert_includes metadata["comms_command_sms_draft_body"], "around after 4"
     end
 
     test "this number after four on Wednesdays infers a phone callback and completes handoff" do
@@ -494,50 +496,52 @@ module Comms
     end
 
     test "rush request waits for SMS timing before posting to Slack" do
-      stage = comm_stage([
-        inbound("I need the order rushed", 2.minutes.ago),
-        inbound("Tomorrow", 1.minute.ago)
-      ])
-      slack_calls = []
+      travel_to Time.find_zone("Central Time (US & Canada)").local(2026, 7, 13, 10, 36) do
+        stage = comm_stage([
+          inbound("I need the order rushed", 2.minutes.ago),
+          inbound("Tomorrow", 1.minute.ago)
+        ])
+        slack_calls = []
 
-      with_slack_handoff_stub(slack_calls, true) do
-        InboundSmsHandoff.call(
-          stage: stage,
-          body: "Tomorrow",
-          source: "inbound_reply_job"
-        )
-        sms_result = InboundSmsHandoff.call(
-          stage: stage,
-          body: "SMS",
-          source: "inbound_reply_job"
-        )
+        with_slack_handoff_stub(slack_calls, true) do
+          InboundSmsHandoff.call(
+            stage: stage,
+            body: "Tomorrow",
+            source: "inbound_reply_job"
+          )
+          sms_result = InboundSmsHandoff.call(
+            stage: stage,
+            body: "SMS",
+            source: "inbound_reply_job"
+          )
 
-        refute sms_result.slack_posted
-        assert_empty slack_calls
-        waiting = stage.reload.metadata
-        assert_equal "text", waiting["sms_autopilot_handoff_contact_preference"]
-        assert_includes waiting["comms_command_sms_draft_body"], "good time to text"
+          refute sms_result.slack_posted
+          assert_empty slack_calls
+          waiting = stage.reload.metadata
+          assert_equal "text", waiting["sms_autopilot_handoff_contact_preference"]
+          assert_includes waiting["comms_command_sms_draft_body"], "good time to text"
 
-        final_result = InboundSmsHandoff.call(
-          stage: stage,
-          body: "Anytime",
-          source: "inbound_reply_job"
-        )
+          final_result = InboundSmsHandoff.call(
+            stage: stage,
+            body: "Anytime",
+            source: "inbound_reply_job"
+          )
 
-        assert final_result.slack_posted
-        confirmation = stage.reload.metadata["comms_command_sms_draft_body"]
-        assert_includes confirmation, final_result.owner.display_name
-        assert_includes confirmation, "by text at (555) 555-0100"
-        assert_includes confirmation, "when convenient"
-        assert_includes confirmation, "keep texting me here"
+          assert final_result.slack_posted
+          confirmation = stage.reload.metadata["comms_command_sms_draft_body"]
+          assert_includes confirmation, final_result.owner.display_name
+          assert_includes confirmation, "by text at (555) 555-0100"
+          assert_includes confirmation, "when convenient"
+          assert_includes confirmation, "keep texting me here"
+        end
+
+        assert_equal 1, slack_calls.length
+        metadata = stage.reload.metadata
+        assert_equal "text", metadata["sms_autopilot_handoff_contact_preference"]
+        assert_equal "anytime", metadata["sms_autopilot_handoff_contact_time"].downcase
+        assert_equal "posted", metadata["sms_autopilot_slack_handoff_status"]
+        assert_equal true, metadata["sms_autopilot_handoff_conversation_continues"]
       end
-
-      assert_equal 1, slack_calls.length
-      metadata = stage.reload.metadata
-      assert_equal "text", metadata["sms_autopilot_handoff_contact_preference"]
-      assert_equal "anytime", metadata["sms_autopilot_handoff_contact_time"].downcase
-      assert_equal "posted", metadata["sms_autopilot_slack_handoff_status"]
-      assert_equal true, metadata["sms_autopilot_handoff_conversation_continues"]
     end
 
     test "direct rush request requires immediate fulfillment escalation" do

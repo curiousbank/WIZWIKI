@@ -9,6 +9,12 @@ module Comms
       suffix = SecureRandom.hex(4)
       @organization = Organization.create!(name: "RAG context #{suffix}", slug: "rag-context-#{suffix}")
       @user = users(:one)
+      RagProfile.register!(
+        organization: @organization,
+        key: "member_manual",
+        label: "Member Manual",
+        kind: "support"
+      )
     end
 
     test "retrieval stays inside the selected profile without embeddings" do
