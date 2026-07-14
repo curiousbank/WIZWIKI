@@ -5,7 +5,6 @@ module Comms
     SETTINGS_KEY = "comms_rag_profiles"
     DEFAULT_KEY = "wizwiki"
     LEGACY_KEY = DEFAULT_KEY
-    SUPPORT_KEY = "313_cash"
     PROFILE_KINDS = %w[support sales].freeze
     KEY_PATTERN = /\A[a-z0-9][a-z0-9_]{1,62}[a-z0-9]\z/.freeze
 
@@ -16,20 +15,12 @@ module Comms
         "scope" => "wizwiki",
         "kind" => "sales",
         "description" => "Organization-owned CRM and communications knowledge"
-      }.freeze,
-      SUPPORT_KEY => {
-        "key" => SUPPORT_KEY,
-        "label" => "313.cash / Powderball",
-        "scope" => SUPPORT_KEY,
-        "kind" => "support",
-        "description" => "Optional 313.cash support documents configured by an operator"
       }.freeze
     }.freeze
 
     class << self
       def normalize(value, fallback: DEFAULT_KEY, organization: nil)
         key = normalize_key(value)
-        key = SUPPORT_KEY if key.in?(%w[313 313cash pinball powderball pb])
         return key if profiles_for(organization).key?(key)
 
         fallback_key = normalize_key(fallback)

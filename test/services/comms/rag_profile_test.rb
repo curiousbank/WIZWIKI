@@ -10,10 +10,11 @@ module Comms
       @organization = Organization.create!(name: "RAG profiles #{suffix}", slug: "rag-profiles-#{suffix}")
     end
 
-    test "built-ins use WIZWIKI CRM by default and keep 313 as an optional support lane" do
+    test "the public foundation has only the neutral WIZWIKI CRM built-in" do
       assert_equal "wizwiki", RagProfile.fetch(nil).fetch("key")
-      assert_equal "support", RagProfile.fetch("powderball").fetch("kind")
       assert_equal "sales", RagProfile.fetch("wizwiki").fetch("kind")
+      assert_equal [["WIZWIKI CRM", "wizwiki"]], RagProfile.options
+      assert_equal "wizwiki", RagProfile.fetch("unknown_private_profile").fetch("key")
     end
 
     test "an organization can register another unique selectable RAG" do

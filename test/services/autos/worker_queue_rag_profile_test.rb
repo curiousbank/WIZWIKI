@@ -5,10 +5,10 @@ require "test_helper"
 module Autos
   class WorkerQueueRagProfileTest < ActiveSupport::TestCase
     test "a comms question carries its selected retrieval scope" do
-      assert_equal "313_cash", WorkerQueue.send(
+      assert_equal "member_manual", WorkerQueue.send(
         :retrieval_scope_for,
         "comms_sms_draft",
-        { "rag_profile" => "313_cash", "rag_scope" => "313_cash" }
+        { "rag_profile" => "member_manual", "rag_scope" => "member_manual" }
       )
       assert_equal "wizwiki", WorkerQueue.send(:retrieval_scope_for, "comms_sms_draft", { "rag_profile" => "wizwiki" })
       assert_equal "weather_calibration", WorkerQueue.send(:retrieval_scope_for, "weather_outcome_analysis", {})

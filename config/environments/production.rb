@@ -87,13 +87,10 @@ Rails.application.configure do
   config.active_record.attributes_for_inspect = [ :id ]
 
   # Enable DNS rebinding protection and other `Host` header attacks.
-  config.hosts = [
-    "wizwiki.local",
-    "www.wizwiki.local",
-    "wizwiki.313.cash",
-    "localhost",
-    "127.0.0.1"
-  ]
+  config.hosts = ENV.fetch(
+    "WIZWIKI_ALLOWED_HOSTS",
+    "wizwiki.local,www.wizwiki.local,localhost,127.0.0.1"
+  ).split(",").map(&:strip).compact_blank
   #
   # Skip DNS rebinding protection for the default health check endpoint.
   # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }

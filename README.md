@@ -145,6 +145,9 @@ Provider settings are documented in `config/application.yml.example`. Leave cred
 and live switches unset until the relevant integration and side effects have been
 reviewed.
 
+For production, set `WIZWIKI_ALLOWED_HOSTS` to a comma-separated host allowlist and set
+`WIZWIKI_SESSION_COOKIE_DOMAIN` only when sessions must span trusted subdomains.
+
 ## Release checks
 
 ```sh

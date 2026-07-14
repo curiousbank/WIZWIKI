@@ -97,8 +97,10 @@ module Authentication
       return {} unless Rails.env.production?
 
       host = request.host.to_s.downcase
-      return { domain: ".wizwiki.local" } if host == "wizwiki.local" || host.end_with?(".wizwiki.local")
-      return { domain: ".313.cash" } if host == "wizwiki.313.cash"
+      configured_domain = ENV.fetch("WIZWIKI_SESSION_COOKIE_DOMAIN", ".wizwiki.local").to_s.strip.downcase
+      cookie_host = configured_domain.delete_prefix(".")
+      return {} if cookie_host.blank?
+      return { domain: ".#{cookie_host}" } if host == cookie_host || host.end_with?(".#{cookie_host}")
 
       {}
     end

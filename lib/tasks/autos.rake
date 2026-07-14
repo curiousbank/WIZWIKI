@@ -25,17 +25,6 @@ namespace :autos do
     puts JSON.pretty_generate(Comms::RagProfile.profiles_for(organization))
   end
 
-  desc "Build the versioned 313.cash support RAG from PB /faq and /guide (no embeddings by default)"
-  task build_313_rag: :environment do
-    organization = Organization.find_by(id: ENV["ORGANIZATION_ID"]) || Organization.order(:created_at).first
-    user = organization&.users&.find_by(id: ENV["USER_ID"]) || organization&.users&.order(:created_at)&.first
-    result = Autos::PbSupportRagBuilder.call(
-      organization: organization,
-      user: user,
-      enqueue_embeddings: ENV["EMBED"] == "1"
-    )
-    puts JSON.pretty_generate(result)
-  end
   desc "Clean RAG embedding queue hygiene issues such as stale claimed chunks"
   task rag_hygiene: :environment do
     result = Autos::RagHygiene.call(**Autos::RagHygiene.env_options)

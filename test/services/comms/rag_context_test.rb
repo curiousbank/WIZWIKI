@@ -13,9 +13,9 @@ module Comms
 
     test "retrieval stays inside the selected profile without embeddings" do
       support = training_document(
-        title: "313.cash support // FAQ",
-        body: "Powderball tickets are reviewed and confirmed from the signed-in play interface.",
-        profile: "313_cash"
+        title: "Member manual // deliveries",
+        body: "Delivery changes are reviewed and confirmed by an operator.",
+        profile: "member_manual"
       )
       training_document(
         title: "WIZWIKI CRM catalog",
@@ -25,8 +25,8 @@ module Comms
 
       result = RagContext.call(
         organization: @organization,
-        profile: "313_cash",
-        query: "How do I play Powderball?"
+        profile: "member_manual",
+        query: "How do I change my delivery?"
       )
 
       assert_equal "versioned_document_keyword", result.fetch(:mode)
