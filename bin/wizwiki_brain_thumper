@@ -1,0 +1,44 @@
+#!/usr/bin/env ruby
+
+require "json"
+require_relative "../config/environment"
+
+command = ARGV.shift.to_s.presence || "tick"
+
+def option_value(name)
+  prefix = "--#{name}="
+  ARGV.find { |arg| arg.start_with?(prefix) }&.delete_prefix(prefix)
+end
+
+def flag?(name)
+  ARGV.include?("--#{name}")
+end
+
+payload = case command
+when "tick"
+  WizwikiBrain::Thumper.tick!
+when "status"
+  WizwikiBrain::Thumper.status
+when "fathom"
+  organization = if (slug = option_value("organization")).present?
+    Organization.find_by!(slug: slug)
+  else
+    Organization.order(:id).first!
+  end
+  WizwikiBrain::Thumper.enqueue_fathom!(
+    organization: organization,
+    date: option_value("date"),
+    trigger: "manual",
+    force: flag?("force")
+  )
+else
+  {
+    ok: false,
+    error: "unknown command",
+    command: command,
+    commands: ["tick", "status", "fathom --date=YYYY-MM-DD [--force]"]
+  }
+end
+
+puts JSON.pretty_generate(payload)
+exit(payload[:ok] == false || payload["ok"] == false ? 1 : 0)

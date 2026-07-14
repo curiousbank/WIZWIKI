@@ -1,0 +1,23 @@
+<section class="border-2 border-dotted border-teal-600 bg-black p-5">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="font-mono text-xs uppercase tracking-[0.35em] text-teal-500">opportunities // schema</p>
+      <h1 class="mt-2 font-mono text-4xl font-black tracking-[-0.06em]">Custom Properties</h1>
+    </div>
+    <%= link_to "New property", new_crm_property_definition_path, class: "border border-dotted border-white/50 bg-teal-700 px-5 py-3 font-mono text-[11px] font-black text-white hover:bg-white hover:text-black" %>
+  </div>
+
+  <div class="mt-6 grid gap-3">
+    <% @property_definitions.each do |property| %>
+      <%= link_to edit_crm_property_definition_path(property), class: "grid gap-2 border border-dotted border-white/30 bg-white/5 p-4 hover:bg-teal-700 md:grid-cols-[110px_1fr_160px_100px]" do %>
+        <span class="font-mono text-xs uppercase tracking-[0.2em] text-teal-400"><%= property.record_type %></span>
+        <strong><%= property.label %> <span class="text-zinc-500">(<%= property.key %>)</span></strong>
+        <span class="text-zinc-300"><%= property.data_type %></span>
+        <span class="text-zinc-400"><%= property.active? ? "active" : "archived" %></span>
+      <% end %>
+    <% end %>
+    <% if @property_definitions.blank? %>
+      <p class="border border-dotted border-white/30 bg-white/5 p-5 text-zinc-300">No custom properties yet.</p>
+    <% end %>
+  </div>
+</section>

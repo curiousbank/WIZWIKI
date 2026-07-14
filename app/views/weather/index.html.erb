@@ -1,0 +1,308 @@
+<% content_for :title, "WIZWIKI WeatherCast // Thumper von AUTOS" %>
+<% weather_scan_status = @weather_scan_status || {} %>
+<% weather_scan_locked = weather_scan_status[:active] || weather_scan_status[:fresh_today] %>
+<% weather_sniffer_active = @weather_sniffer_active %>
+<% weather_sniffer_status = @weather_sniffer_status.to_h %>
+<% kalshi_account = @kalshi_account_status.to_h %>
+<% live_dashboard = @kalshi_live_dashboard.to_h %>
+<% bankroll = live_dashboard[:bankroll].to_h %>
+<% today_profit = live_dashboard[:today_live_profit].to_f %>
+<% overall_profit = live_dashboard[:overall_live_profit].to_f %>
+<% weather_celebration = weather_win_celebration(live_dashboard) %>
+<% profitability = @kalshi_profitability_summary.to_h %>
+<% portfolio_guard = profitability[:guard].to_h %>
+<% last_weather_tick_at = weather_time_value(weather_sniffer_status[:last_tick_at]) %>
+<% risk_controls = @kalshi_risk_controls.to_h %>
+<% risk_max = risk_controls[:daily_cap].to_f %>
+<% calibration_harness = @kalshi_calibration_harness.to_h %>
+<% calibration_gate = calibration_harness[:live_gate].to_h %>
+<% autopilot_status = @kalshi_autopilot_status.to_h %>
+<% manual_buy_amounts = [5] %>
+
+<turbo-frame id="weather_probability_lab"
+  style="display: block; overflow: visible;"
+  data-controller="ticket-sync-status weather-dashboard"
+  data-ticket-sync-status-url-value="<%= sync_deal_queue_status_path(format: :json) %>"
+  data-ticket-sync-status-interval-value="5000"
+  data-weather-dashboard-interval-value="60000"
+  data-weather-sync-active="<%= weather_scan_status[:active] ? "true" : "false" %>">
+  <section class="weather-workspace space-y-5 text-white">
+    <header class="weather-page-header">
+      <div class="weather-page-heading">
+        <p class="weather-eyebrow">Markets / Weather</p>
+        <h1>Weather Markets</h1>
+        <p class="weather-page-meta">
+          <span><%= live_dashboard[:position_source].to_s == "live_orders" ? "Live portfolio" : "Paper portfolio" %></span>
+          <span><%= last_weather_tick_at.present? ? "Scanned #{time_ago_in_words(last_weather_tick_at)} ago" : "Awaiting first market scan" %></span>
+        </p>
+      </div>
+      <div class="weather-header-status" aria-label="Trading status">
+        <span class="weather-status-chip <%= autopilot_status[:execution_allowed] ? 'is-live' : 'is-muted' %>"><%= autopilot_status[:execution_allowed] ? "Live execution" : "Execution blocked" %></span>
+        <span class="weather-status-chip <%= calibration_gate[:clear] ? 'is-safe' : 'is-paused' %>"><%= calibration_gate[:clear] ? "Walk-forward clear" : "Calibration blocked" %></span>
+        <span class="weather-status-chip <%= portfolio_guard.fetch(:allowed, false) ? 'is-safe' : 'is-paused' %>"><%= portfolio_guard.fetch(:allowed, false) ? "Risk guard active" : "Auto buys paused" %></span>
+      </div>
+    </header>
+
+    <% if weather_celebration.present? %>
+      <div class="weather-win-alert" role="status" aria-live="polite">
+        <div>
+          <span class="weather-eyebrow">Settled win</span>
+          <strong><%= weather_celebration[:headline] %></strong>
+          <p><%= weather_celebration[:detail] %></p>
+        </div>
+        <div class="weather-win-values">
+          <span><%= weather_celebration[:profit] %></span>
+          <span><%= weather_celebration[:contracts] %></span>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="weather-kpi-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <%= weather_command_metric("Today P/L", number_to_currency(today_profit), "Fees included, open positions marked", tone: weather_money_tone(today_profit)) %>
+      <%= weather_command_metric("Realized + open P/L", number_to_currency(overall_profit), "Live tracking period", tone: weather_money_tone(overall_profit)) %>
+      <%= weather_command_metric("Available today", number_to_currency(bankroll[:reserve_balance].to_f), "#{number_to_currency(bankroll[:total_simulated_staked].to_f)} committed", tone: "cyan") %>
+      <%= weather_command_metric("Open exposure", number_to_currency(live_dashboard[:open_stake].to_f), "#{number_with_delimiter(live_dashboard[:open_contracts].to_i)} contracts", tone: "emerald") %>
+    </div>
+
+    <%= weather_strategy_health_panel(profitability) %>
+    <%= weather_calibration_harness_panel(calibration_harness, @kalshi_paper_strategy_summary) %>
+
+    <% if @weather_error.present? %>
+      <div class="border border-dotted border-teal-400 bg-teal-950/40 p-4 font-mono text-xs text-teal-100">
+        Weather Brain could not read the signal tables: <%= @weather_error %>
+      </div>
+    <% end %>
+
+    <div class="weather-control-grid">
+      <div data-ticket-sync-status-target="weatherPanel" class="weather-panel weather-control-panel <%= weather_scan_status[:state] == 'failed' ? 'has-error' : '' %>">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p class="weather-eyebrow">Data operations</p>
+            <h2 class="weather-panel-title">Market scans</h2>
+          </div>
+          <span class="weather-status-chip <%= weather_sniffer_active ? 'is-running' : 'is-muted' %>">
+            <%= weather_sniffer_active ? "Scan running" : "Scheduled" %>
+          </span>
+        </div>
+
+        <div class="mt-4 grid gap-3 md:grid-cols-2">
+          <%= weather_timer_metric("next scan", weather_sniffer_status[:next_tick_at], caption: "automatic weather market sweep", empty: weather_sniffer_active ? "running" : "timer pending", tone: "yellow") %>
+          <%= weather_timer_metric("market close", live_dashboard[:next_close_at], caption: "nearest open weather market", empty: "no open close", tone: "cyan") %>
+          <%= weather_status_metric("Model review", @kalshi_autopilot_status.to_h[:qwen_ready] ? "Ready" : "Waiting", value_class: @kalshi_autopilot_status.to_h[:qwen_ready] ? "text-emerald-100" : "text-yellow-100", caption: "Qwen is an advisory veto; deterministic calibration remains authoritative") %>
+          <%= weather_status_metric("Weather.gov", weather_scan_status[:active] ? "Scanning" : weather_scan_status[:fresh_today] ? "Current" : "Ready", value_class: weather_scan_status[:active] ? "text-yellow-100" : "text-cyan-100", caption: weather_scan_status[:counts_label].presence) %>
+        </div>
+
+        <div class="weather-action-grid">
+          <%= button_to (weather_scan_status[:active] ? "Refreshing weather data" : weather_scan_status[:fresh_today] ? "Weather data current" : "Refresh weather data"),
+            sync_weather_deal_queue_path(return_to: "weather"),
+            method: :post,
+            disabled: weather_scan_locked,
+            class: "weather-action-button is-secondary",
+            data: {
+              turbo_confirm: "Refresh Weather.gov warnings, forecast zones, ZIP crosswalks, contractor matches, and Kalshi research context?",
+              ticket_sync_status_target: "weatherButton"
+            } %>
+          <%= button_to (weather_sniffer_active ? "Market scan running" : "Run market scan"),
+            sniff_weather_path,
+            method: :post,
+            disabled: weather_sniffer_active,
+            class: "weather-action-button is-primary",
+            data: {
+              turbo_confirm: "Run the live weather market scout now? This refreshes weather market opportunities and can place live Kalshi orders if every gate clears."
+            } %>
+        </div>
+
+        <div class="weather-progress" aria-label="Weather refresh progress">
+          <span data-ticket-sync-status-target="weatherMeter" style="width: <%= weather_scan_status[:progress_percent].to_i %>%"></span>
+        </div>
+        <div class="weather-operation-status">
+          <p data-ticket-sync-status-target="weatherState"><strong><%= weather_scan_status[:state_label].to_s.titleize.presence || "Idle" %></strong></p>
+          <p data-ticket-sync-status-target="weatherDetail"><%= weather_scan_status[:detail_label].presence || "Weather data is ready." %></p>
+          <p data-ticket-sync-status-target="weatherLastSuccess"><%= weather_scan_status[:last_success_label].presence || "No successful Weather.gov scan yet." %></p>
+          <p data-ticket-sync-status-target="weatherCounts"><%= weather_scan_status[:counts_label].presence || "" %></p>
+        </div>
+      </div>
+
+      <div class="weather-panel weather-risk-panel">
+        <div class="space-y-4">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p class="weather-eyebrow">Portfolio controls</p>
+              <h2 class="weather-panel-title">Hard live ceiling</h2>
+              <strong class="weather-risk-value"><%= number_to_currency(risk_max, precision: 0) %></strong>
+            </div>
+            <span class="weather-status-chip is-safe">Code locked</span>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <%= weather_status_metric("Committed today", number_to_currency(risk_controls[:reserved_today].to_f), value_class: "text-cyan-100", caption: "premium plus rounded fees") %>
+            <%= weather_status_metric("Available today", number_to_currency(risk_controls[:remaining_today].to_f), value_class: "text-emerald-100", caption: "no rollover and no minimum spend") %>
+          </div>
+          <div class="border-t border-white/10 pt-4 text-sm leading-6 text-white/66">
+            Legacy uncalibrated probabilities are disabled. Exploration, review-auto, and forced daily deployment cannot create live orders. Live cannot exceed $5 including fees and cannot resume without statistical gates plus manual promotion.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="weather-panel weather-opportunity-panel">
+      <div class="weather-section-header">
+        <div>
+          <p class="weather-eyebrow">Ranked live scan</p>
+          <h2 class="weather-panel-title">Qualified opportunities</h2>
+        </div>
+        <span class="weather-status-chip is-muted">Daily cap <%= number_to_currency(risk_max, precision: 0) %></span>
+      </div>
+
+      <% if @kalshi_opportunity_board.present? %>
+        <div class="weather-opportunity-list">
+          <% @kalshi_opportunity_board.first(8).each do |row| %>
+            <% recommendation = row[:recommendation].to_h %>
+            <% status_class = case recommendation[:tone].to_s
+              when "green" then "is-eligible"
+              when "red" then "is-blocked"
+              when "cyan" then "is-watch"
+              else "is-muted"
+              end %>
+            <% manual_enabled = recommendation[:label].to_s == "eligible" %>
+            <article class="weather-opportunity-row <%= status_class %>">
+              <div class="weather-opportunity-primary">
+                <span class="weather-rank">#<%= row[:rank] %></span>
+                <div>
+                  <h3><%= [row[:city], row[:state]].compact_blank.join(", ") %></h3>
+                  <code><%= row[:market_ticker] %></code>
+                </div>
+                <span class="weather-decision-chip"><%= recommendation[:label] %></span>
+              </div>
+
+              <div class="weather-opportunity-metrics">
+                <div><span>Calibrated probability</span><strong><%= number_to_percentage(row[:confidence].to_f * 100, precision: 0) %></strong><small>raw model <%= number_to_percentage(row[:raw_confidence].to_f * 100, precision: 0) %></small></div>
+                <div><span>Entry</span><strong><%= number_to_percentage(row[:ask].to_f * 100, precision: 0) %></strong><small>fee est. <%= number_to_percentage(row[:fee_per_contract].to_f * 100, precision: 2) %></small></div>
+                <div><span>Net edge</span><strong class="<%= row[:net_edge].to_f.positive? ? 'is-positive' : 'is-negative' %>"><%= number_to_percentage(row[:net_edge].to_f * 100, precision: 1) %></strong><small>raw <%= number_to_percentage(row[:edge].to_f * 100, precision: 1) %></small></div>
+                <div><span>Forecast stack</span><strong><%= row[:source_count].presence || "n/a" %> sources</strong><small><%= row[:source_spread_f].present? ? "#{row[:source_spread_f]}F spread" : "spread unavailable" %></small></div>
+              </div>
+
+              <div class="weather-opportunity-decision">
+                <p><%= recommendation[:reason] %></p>
+                <% if manual_enabled %>
+                  <div class="weather-buy-actions" aria-label="Manual buy amounts">
+                    <% manual_buy_amounts.each do |amount| %>
+                      <%= button_to number_to_currency(amount, precision: 0),
+                        buy_weather_path,
+                        method: :post,
+                        params: { prediction_id: row[:prediction_id], amount: amount },
+                        class: "weather-buy-button",
+                        data: {
+                          turbo_confirm: "Place a manual weather buy for #{number_to_currency(amount, precision: 0)} on #{row[:market_ticker]}? This can create a live Kalshi order if live execution is enabled."
+                        } %>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            </article>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="weather-empty-state">No open weather contracts currently clear the portfolio filters.</div>
+      <% end %>
+    </section>
+
+    <%= weather_open_positions_panel(@kalshi_live_dashboard, compact: true) %>
+    <%= weather_buy_journal_panel(@kalshi_buy_journal, @kalshi_autopilot_status, compact: false) %>
+
+    <%= weather_market_station_panel(@kalshi_market_weather_station) %>
+
+    <div class="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+      <div class="space-y-4">
+        <%= weather_live_pnl_panel(@kalshi_paper_performance, @kalshi_live_dashboard) %>
+        <%= weather_probability_line_chart(@kalshi_recent_predictions) %>
+        <%= weather_paper_performance_panel(@kalshi_paper_performance) %>
+      </div>
+
+      <div class="space-y-4">
+        <div class="border-2 border-dotted border-white/20 bg-zinc-950 p-4">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p class="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-300">prediction scorecard</p>
+              <h2 class="mt-1 font-mono text-2xl font-black tracking-[-0.05em] text-white">Weather Accuracy</h2>
+            </div>
+            <span class="font-mono text-xs uppercase tracking-[0.1em] text-zinc-400"><%= number_with_delimiter(@kalshi_prediction_summary.to_h[:paper_yes].to_i) %> paper yes</span>
+          </div>
+          <div class="mt-4 grid gap-3 sm:grid-cols-2">
+            <%= weather_accuracy_card("hit rate", @kalshi_prediction_summary.to_h[:hit_rate] ? "#{@kalshi_prediction_summary.to_h[:hit_rate]}%" : "n/a", "#{number_with_delimiter(@kalshi_prediction_summary.to_h[:wins].to_i)} wins // #{number_with_delimiter(@kalshi_prediction_summary.to_h[:losses].to_i)} losses", tone: "green") %>
+            <%= weather_accuracy_card("open picks", number_with_delimiter(@kalshi_prediction_summary.to_h[:open].to_i), "#{number_with_delimiter(@kalshi_prediction_summary.to_h[:paper_yes].to_i)} paper yes total", tone: "cyan") %>
+          </div>
+        </div>
+
+        <%= weather_divergence_watch_panel(@kalshi_divergence_watch) %>
+      </div>
+    </div>
+
+    <div class="border-2 border-dotted border-cyan-300/55 bg-cyan-950/10 p-5">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p class="font-mono text-xs font-black uppercase tracking-[0.18em] text-cyan-200">kalshi focus // live contracts</p>
+          <h2 class="mt-1 font-mono text-3xl font-black tracking-[-0.06em] text-white">Daily High Temperature Markets</h2>
+          <p class="mt-3 max-w-4xl text-base leading-7 text-cyan-50/82">
+            The study set shows the date-aligned forecast stack, every candidate contract snapshot, AUTOS probability, market price, and fee-adjusted edge. Stored picks update from this feed while the dashboard refreshes.
+          </p>
+        </div>
+        <div class="border border-dotted border-cyan-200/30 bg-black/35 px-4 py-3 font-mono text-xs font-black uppercase tracking-[0.1em] text-cyan-100">
+          8 cities // paper harness // guarded $5 live ceiling
+        </div>
+      </div>
+      <%= weather_study_series_cards((@kalshi_weather_scout || {})[:study_series]) %>
+      <% if (@kalshi_weather_scout || {})[:errors].present? %>
+        <div class="mt-4 border border-dotted border-orange-300/40 bg-orange-950/20 p-3 font-mono text-[10px] uppercase leading-5 tracking-[0.12em] text-orange-100/80">
+          <%= (@kalshi_weather_scout || {})[:errors].first(4).join(" // ") %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="grid gap-4 2xl:grid-cols-[1.1fr_0.9fr]">
+      <div class="border-2 border-dotted border-white/20 bg-zinc-950 p-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p class="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-300">weather signal tape</p>
+            <h2 class="mt-1 font-mono text-2xl font-black tracking-[-0.05em] text-white">Latest Weather Inputs</h2>
+          </div>
+          <span class="font-mono text-xs uppercase tracking-[0.1em] text-zinc-400"><%= number_with_delimiter(@signals.to_a.length) %> shown</span>
+        </div>
+        <div class="mt-4 grid gap-2 sm:grid-cols-2">
+          <%= weather_stat_card("alerts", @summary.to_h[:alerts], "live warnings") %>
+          <%= weather_stat_card("forecasts", @summary.to_h[:forecasts], "zone outlooks") %>
+          <%= weather_stat_card("predictive", @summary.to_h[:predictions], "urgency/certainty") %>
+          <%= weather_stat_card("zip rows", @summary.to_h[:zip_crosswalk_rows], "crosswalk ready") %>
+        </div>
+        <div class="mt-4 overflow-x-auto">
+          <table class="min-w-full border-collapse font-mono text-xs uppercase tracking-[0.04em]">
+            <thead class="text-zinc-500">
+              <tr class="border-b border-dotted border-white/20">
+                <th class="px-3 py-2 text-left">event</th>
+                <th class="px-3 py-2 text-left">where</th>
+                <th class="px-3 py-2 text-right">age</th>
+              </tr>
+            </thead>
+            <tbody class="text-zinc-100">
+              <% @signals.to_a.first(10).each do |signal| %>
+                <tr class="border-b border-dotted border-white/10">
+                  <td class="max-w-72 px-3 py-3 normal-case tracking-normal"><%= signal.event %></td>
+                  <td class="max-w-56 px-3 py-3 normal-case tracking-normal text-zinc-300"><%= Array(signal.affected_postal_codes).presence&.first(4)&.join(", ").presence || Array(signal.affected_states).presence&.join(", ") || signal.area_desc.presence || "n/a" %></td>
+                  <td class="px-3 py-3 text-right text-zinc-400"><%= signal.started_at ? time_ago_in_words(signal.started_at) + " ago" : "n/a" %></td>
+                </tr>
+              <% end %>
+              <% if @signals.blank? %>
+                <tr>
+                  <td colspan="3" class="px-3 py-8 text-center text-zinc-500">No weather signals stored yet.</td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <%= weather_miss_cause_panel(@kalshi_miss_cause_summary, @kalshi_accuracy_summary.to_h[:source_counts]) %>
+    </div>
+
+    <%= weather_source_learning_panel(@kalshi_source_learning || {}) %>
+  </section>
+</turbo-frame>

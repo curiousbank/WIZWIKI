@@ -1,0 +1,49 @@
+<% if @dojo_scrolls.present? %>
+  <% dojo_folder_url = @dojo_scrolls.find { |scroll| scroll[:folder_url].present? }&.[](:folder_url) %>
+  <section style="margin-top:22px; padding:20px; background:#071510; border:1px solid #10b981; color:#d9fff0;">
+    <p style="margin:0 0 7px; color:#6ee7b7; font-size:11px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase;">Thumper DOJO training scrolls</p>
+    <h2 style="margin:0 0 8px; color:#f3fff9; font-size:21px; line-height:1.2;">Training links shared with this digest</h2>
+    <p style="margin:0 0 14px; color:#b7f7df; font-size:13px; line-height:1.55;">
+      Every unshared dojo scroll found for the digest window is listed here, including multiple runs from the same day.
+    </p>
+
+    <% @dojo_scrolls.each_with_index do |dojo, index| %>
+      <div style="margin:0 0 10px; padding:12px 13px; background:#10221b; border:1px solid #1f8f68;">
+        <p style="margin:0; color:#f3fff9; font-size:14px; line-height:1.5;">
+          <strong><%= index + 1 %>. <%= dojo[:date_label].presence || dojo[:date].presence || dojo[:doc_name].presence || "Dojo scroll" %></strong>
+          <% if dojo[:doc_name].present? && dojo[:doc_name] != dojo[:date_label] %>
+            <span style="color:#a7f3d0;">// <%= dojo[:doc_name] %></span>
+          <% end %>
+        </p>
+        <p style="margin:6px 0 0; color:#d9fff0; font-size:13px; line-height:1.5;">
+          <%= dojo[:scorecards].to_i %> scorecard(s),
+          <%= dojo[:pass_count].to_i %> pass /
+          <%= dojo[:review_count].to_i %> review
+          <% if dojo[:average_score].present? %>
+            / avg <%= dojo[:average_score] %>
+          <% end %>
+        </p>
+        <% full_day_url = dojo[:full_day_url].presence || dojo[:url].presence %>
+        <% full_day_title = dojo[:full_day_title].presence || dojo[:doc_name].presence || "Full Day Thumper DOJO Scroll" %>
+        <% session_url = dojo[:session_url].presence || dojo[:session_doc_url].presence %>
+        <% session_title = dojo[:session_title].presence || dojo[:session_doc_name].presence || "Thumper DOJO Session Scroll" %>
+        <% if full_day_url.present? || session_url.present? %>
+          <p style="margin:9px 0 0; line-height:1.8;">
+            <% if full_day_url.present? %>
+              <a href="<%= full_day_url %>" target="_blank" rel="noopener" style="display:inline-block; margin:0 10px 6px 0; color:#6ee7b7; font-size:13px; font-weight:800; text-decoration:underline;">Full Day scroll: <%= full_day_title %></a>
+            <% end %>
+            <% if session_url.present? %>
+              <a href="<%= session_url %>" target="_blank" rel="noopener" style="display:inline-block; margin:0 10px 6px 0; color:#38bdf8; font-size:13px; font-weight:800; text-decoration:underline;">Session scroll: <%= session_title %></a>
+            <% end %>
+          </p>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if dojo_folder_url.present? %>
+      <p style="margin:12px 0 0; color:#b7f7df; font-size:12px; line-height:1.45;">
+        Folder: <a href="<%= dojo_folder_url %>" target="_blank" rel="noopener" style="color:#6ee7b7; font-weight:800;">Thumper DOJO scrolls</a>
+      </p>
+    <% end %>
+  </section>
+<% end %>

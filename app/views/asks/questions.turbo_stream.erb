@@ -1,0 +1,2 @@
+<%= turbo_stream.update "autos_questions", partial: "asks/questions_list", locals: { recent_questions: @recent_questions } %>
+<%= turbo_stream.replace "wizwiki_usage_review", partial: "asks/usage_review", locals: { usage_review: @usage_review } %>

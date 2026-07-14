@@ -1,0 +1,28 @@
+<section class="border-2 border-dotted border-teal-600 bg-black p-5">
+  <p class="font-mono text-xs uppercase tracking-[0.35em] text-teal-500">data hygiene</p>
+  <h1 class="mt-2 font-mono text-4xl font-black tracking-[-0.06em]">Duplicate Review</h1>
+
+  <div class="mt-6 grid gap-4">
+    <% @duplicate_candidates.each do |candidate| %>
+      <article class="grid gap-4 border border-dotted border-teal-500 bg-teal-950/40 p-5 lg:grid-cols-[1fr_1fr_160px]">
+        <div>
+          <span class="font-mono text-xs uppercase tracking-[0.2em] text-teal-300">newer record</span>
+          <%= link_to candidate.crm_record.name, crm_record_path(candidate.crm_record), class: "mt-2 block text-xl font-black text-white underline" %>
+        </div>
+        <div>
+          <span class="font-mono text-xs uppercase tracking-[0.2em] text-teal-300">possible duplicate</span>
+          <%= link_to candidate.duplicate_record.name, crm_record_path(candidate.duplicate_record), class: "mt-2 block text-xl font-black text-white underline" %>
+          <p class="mt-1 text-sm text-teal-50/80"><%= candidate.reasons.join(", ") %></p>
+        </div>
+        <div class="flex flex-col gap-2">
+          <strong class="text-2xl text-teal-100"><%= candidate.score.to_i %>%</strong>
+          <%= button_to "Ignore", crm_duplicate_candidate_path(candidate, status: "ignored"), method: :patch, class: "border border-dotted border-white/40 px-4 py-2 text-white hover:bg-teal-700" %>
+          <%= button_to "Mark merged", crm_duplicate_candidate_path(candidate, status: "merged"), method: :patch, class: "border border-dotted border-white/50 bg-teal-700 px-4 py-2 font-bold text-white hover:bg-white hover:text-black" %>
+        </div>
+      </article>
+    <% end %>
+    <% if @duplicate_candidates.blank? %>
+      <p class="border border-dotted border-white/30 bg-white/5 p-5 text-zinc-300">No open duplicate candidates.</p>
+    <% end %>
+  </div>
+</section>

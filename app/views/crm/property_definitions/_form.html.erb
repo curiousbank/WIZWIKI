@@ -1,0 +1,40 @@
+<%= form_with model: @property_definition, url: (@property_definition.persisted? ? crm_property_definition_path(@property_definition) : crm_property_definitions_path), class: "grid gap-5 border-2 border-dotted border-teal-600 bg-black p-5" do |form| %>
+  <div class="grid gap-4 md:grid-cols-2">
+    <div>
+      <%= form.label :record_type, class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+      <%= form.select :record_type, CrmRecord::RECORD_TYPES.map { |type| [type.titleize, type] }, {}, class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+    </div>
+    <div>
+      <%= form.label :label, class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+      <%= form.text_field :label, required: true, class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+    </div>
+    <div>
+      <%= form.label :key, class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+      <%= form.text_field :key, required: true, placeholder: "auto_created_from_label", class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+    </div>
+    <div>
+      <%= form.label :data_type, class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+      <%= form.select :data_type, CrmPropertyDefinition::DATA_TYPES.map { |type| [type.titleize, type] }, {}, class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap gap-5 border border-dotted border-white/30 bg-white/5 p-4">
+    <label class="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em]">
+      <%= form.check_box :required, class: "size-5" %>
+      <span>Required</span>
+    </label>
+    <label class="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em]">
+      <%= form.check_box :unique_value, class: "size-5" %>
+      <span>Unique value</span>
+    </label>
+    <label class="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em]">
+      <%= form.check_box :active, class: "size-5" %>
+      <span>Active</span>
+    </label>
+  </div>
+
+  <div class="flex flex-wrap gap-3">
+    <%= form.submit "Save property", class: "border border-dotted border-white/50 bg-teal-700 px-6 py-3 font-mono text-[11px] font-black text-white hover:bg-white hover:text-black" %>
+    <%= link_to "Cancel", crm_property_definitions_path, class: "border border-dotted border-white/40 px-6 py-3 font-mono text-[11px] font-bold text-white hover:bg-teal-700" %>
+  </div>
+<% end %>

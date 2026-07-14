@@ -1,0 +1,144 @@
+<div style="margin:0; padding:0; background:#0b0b12; color:#f8fbff; font-family:Arial, Helvetica, sans-serif;">
+  <div style="max-width:700px; margin:0 auto; padding:28px 18px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse; background:#141427; border:1px solid #372d73;">
+      <tr>
+        <td style="padding:22px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+            <tr>
+              <td style="vertical-align:top;">
+                <p style="margin:0 0 8px; color:#ff7ad9; font-size:12px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase;">The Fathom Brain 🧠</p>
+                <h1 style="margin:0; color:#ffffff; font-size:30px; line-height:1.08;">Today’s call memory is ready.</h1>
+                <p style="margin:14px 0 0; color:#cfd7ff; font-size:15px; line-height:1.6;">
+                  Hello Thumper and company. The Fathom Brain synced <strong style="color:#ffffff;"><%= @result["call_count"].to_i %></strong>
+                  Fathom call(s) for <strong style="color:#ffffff;"><%= @date.strftime("%B %-d, %Y") %></strong>, stored the raw call data in WIZWIKI,
+                  and waited for Qwen vector memory before creating this digest.
+                </p>
+              </td>
+              <% if @thumper_image_url.present? %>
+                <td width="120" align="right" style="vertical-align:top; padding-left:18px;">
+                  <%= image_tag @thumper_image_url, alt: "Thumper von AUTOS helper", width: 104, style: "display:block; width:104px; max-width:104px; height:auto;" %>
+                </td>
+              <% end %>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <div style="margin-top:18px; padding:22px; background:#f8fbff; border:1px solid #d7def5; color:#171827;">
+      <h2 style="margin:0 0 10px; font-size:22px; color:#10111c;"><%= @google_doc["name"].presence || "Thumper Fathom Training Digest" %></h2>
+      <p style="margin:0 0 18px; color:#343849; font-size:14px; line-height:1.6;">
+        The Google Doc is the clean review artifact: call links, readable summaries, action items, sync stats, and embedding status. Thumper uses the stored call records underneath for /ask retrieval.
+      </p>
+      <% if @google_doc["webViewLink"].present? %>
+        <p style="margin:0;">
+          <a href="<%= @google_doc["webViewLink"] %>" style="display:inline-block; background:#6b4dff; color:#ffffff; text-decoration:none; padding:13px 18px; font-weight:800; letter-spacing:0.04em;">OPEN GOOGLE DOC</a>
+        </p>
+      <% else %>
+        <p style="margin:0; color:#7a2435; font-weight:700;">Google returned a document without a view link. Check Drive for the created file.</p>
+      <% end %>
+    </div>
+
+    <% if @operations_note.present? %>
+      <div style="margin-top:18px; padding:18px 20px; background:#eef7fb; border:1px solid #9bd7e4; color:#171827;">
+        <p style="margin:0 0 8px; color:#0c6f82; font-size:11px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase;">Operations note</p>
+        <p style="margin:0; color:#23313a; font-size:14px; line-height:1.65;"><%= @operations_note %></p>
+      </div>
+    <% end %>
+
+    <div style="margin-top:18px; padding:22px; background:#fffdf8; border:1px solid #ffe1a6; color:#171827;">
+      <p style="margin:0 0 8px; color:#9b4b00; font-size:11px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase;">Daily readout</p>
+      <h2 style="margin:0 0 10px; font-size:21px; color:#10111c;">What Thumper learned from today’s calls</h2>
+      <p style="margin:0; color:#343849; font-size:14px; line-height:1.65;">
+        This digest is meant to be skimmable first and archival second. Start with the call board below, open the recordings that matter, then use the Google Doc when you need the full training record.
+      </p>
+    </div>
+
+    <% if @call_cards.present? %>
+      <div style="margin-top:18px;">
+        <h2 style="margin:0 0 12px; color:#ffffff; font-size:22px;">Call replay board</h2>
+        <% @call_cards.each_with_index do |call, index| %>
+          <article style="margin:0 0 14px; padding:18px; background:#f8fbff; border:1px solid #d7def5; color:#171827;">
+            <p style="margin:0 0 8px; color:#684de8; font-size:11px; font-weight:800; letter-spacing:0.14em; text-transform:uppercase;">
+              CALL <%= index + 1 %>
+              <% if call[:time].present? %>
+                // <%= call[:time] %>
+              <% end %>
+            </p>
+            <h3 style="margin:0; color:#10111c; font-size:20px; line-height:1.25;"><%= call[:title] %></h3>
+
+            <% if call[:recorded_by].present? || call[:people].present? %>
+              <p style="margin:9px 0 0; color:#5a6072; font-size:12px; line-height:1.5;">
+                <% if call[:recorded_by].present? %>
+                  Recorded by <strong><%= call[:recorded_by] %></strong>.
+                <% end %>
+                <% if call[:people].present? %>
+                  People: <%= call[:people].truncate(180, omission: "...") %>
+                <% end %>
+              </p>
+            <% end %>
+
+            <p style="margin:13px 0 0; color:#343849; font-size:14px; line-height:1.65;"><%= call[:summary] %></p>
+
+            <% if call[:highlights].present? %>
+              <p style="margin:12px 0 0; padding:12px; background:#fff1fb; border-left:4px solid #ff7ad9; color:#43213b; font-size:13px; line-height:1.55;">
+                <strong>Highlight:</strong> <%= call[:highlights] %>
+              </p>
+            <% end %>
+
+            <% if call[:action_items].present? %>
+              <p style="margin:12px 0 0; padding:12px; background:#eef7fb; border-left:4px solid #0c6f82; color:#23313a; font-size:13px; line-height:1.55;">
+                <strong>Action items:</strong> <%= call[:action_items] %>
+              </p>
+            <% end %>
+
+            <% if call[:primary_url].present? || call[:meeting_url].present? %>
+              <p style="margin:14px 0 0;">
+                <% if call[:primary_url].present? %>
+                  <a href="<%= call[:primary_url] %>" target="_blank" rel="noopener" style="display:inline-block; margin:0 8px 8px 0; background:#10111c; color:#ffffff; text-decoration:none; padding:10px 13px; font-size:12px; font-weight:800; letter-spacing:0.04em;">WATCH / OPEN FATHOM</a>
+                <% end %>
+                <% if call[:meeting_url].present? %>
+                  <a href="<%= call[:meeting_url] %>" target="_blank" rel="noopener" style="display:inline-block; margin:0 8px 8px 0; background:#ffffff; border:1px solid #10111c; color:#10111c; text-decoration:none; padding:9px 12px; font-size:12px; font-weight:800; letter-spacing:0.04em;">MEETING LINK</a>
+                <% end %>
+              </p>
+            <% end %>
+          </article>
+        <% end %>
+      </div>
+    <% else %>
+      <p style="margin:18px 0 0; padding:16px; background:#f8fbff; color:#171827; border:1px solid #d7def5;">No Fathom call summaries were available in this digest.</p>
+    <% end %>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate; border-spacing:0 10px; margin-top:12px;">
+      <tr>
+        <td style="background:#1c1b36; border:1px solid #414078; padding:14px;">
+          <p style="margin:0; color:#9ee7ff; font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase;">New / updated</p>
+          <p style="margin:6px 0 0; color:#ffffff; font-size:24px; font-weight:800;"><%= @result["created"].to_i %> / <%= @result["updated"].to_i %></p>
+        </td>
+        <td style="background:#1c1b36; border:1px solid #414078; padding:14px;">
+          <p style="margin:0; color:#9ee7ff; font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase;">Training time</p>
+          <p style="margin:6px 0 0; color:#ffffff; font-size:24px; font-weight:800;"><%= @duration_label %></p>
+        </td>
+        <td style="background:#1c1b36; border:1px solid #414078; padding:14px;">
+          <p style="margin:0; color:#9ee7ff; font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase;">Errors</p>
+          <p style="margin:6px 0 0; color:#ffffff; font-size:24px; font-weight:800;"><%= @result["errors"].to_i %></p>
+        </td>
+      </tr>
+    </table>
+
+    <div style="margin-top:10px; padding:16px; background:#10111c; border:1px solid #414078; color:#cfd7ff; font-size:13px; line-height:1.5;">
+      Vector memory: <strong style="color:#ffffff;"><%= @embedding_status["embedded"].to_i %>/<%= @embedding_status["chunk_count"].to_i %></strong>
+      chunks embedded with <strong style="color:#ffffff;"><%= @embedding_status["embedding_model"].presence || "Qwen embedder" %></strong>.
+      <% if @embedding_status["failed"].to_i.positive? %>
+        <strong style="color:#ffb3c8;"><%= @embedding_status["failed"].to_i %> chunk(s) need review.</strong>
+      <% end %>
+    </div>
+
+    <%= render "dojo_scrolls" %>
+
+    <p style="margin:18px 0 0; color:#cfd7ff; font-size:13px; line-height:1.5;">
+      From,<br>
+      <strong style="color:#ffffff;">The Fathom Brain 🧠</strong>
+    </p>
+  </div>
+</div>

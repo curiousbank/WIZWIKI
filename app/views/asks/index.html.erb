@@ -1,0 +1,1849 @@
+<% content_for :title, "WIZWIKI // Thumper" %>
+<%= turbo_stream_from "autos_questions_user_#{current_user.id}" if current_user.present? %>
+
+<% content_for :head do %>
+  <style>
+    .wizwiki-ask-console {
+      display: grid;
+      gap: 16px;
+      color: #f7f7f2;
+      font-family: "Courier New", Courier, monospace;
+    }
+
+    .wizwiki-ask-hero,
+    .wizwiki-ask-panel,
+    .wizwiki-answer-card {
+      border: 2px dotted rgba(255, 255, 255, 0.42);
+      background:
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 7px),
+        linear-gradient(135deg, rgba(255, 45, 98, 0.13), rgba(8, 8, 8, 0.98) 42%, rgba(124, 255, 155, 0.055));
+      box-shadow: inset 0 0 24px rgba(255, 255, 255, 0.04), 0 0 38px rgba(255, 45, 98, 0.12);
+    }
+
+    .wizwiki-ask-hero {
+      display: grid;
+      grid-template-columns: minmax(126px, 0.22fr) minmax(0, 1fr);
+      gap: 10px;
+      align-items: stretch;
+      padding: clamp(10px, 1.5vw, 16px);
+    }
+
+    .wizwiki-ask-hero-main {
+      display: grid;
+      align-content: center;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .wizwiki-ask-kicker,
+    .wizwiki-ask-label,
+    .wizwiki-answer-meta,
+    .wizwiki-answer-output-head,
+    .wizwiki-voice-status {
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.18em;
+      line-height: 1.4;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-kicker { color: #7cff9b; }
+
+    .wizwiki-ask-title {
+      margin: 0;
+      color: white;
+      font-size: clamp(1.45rem, 3vw, 2.2rem);
+      font-weight: 1000;
+      letter-spacing: 0;
+      line-height: 1;
+      text-shadow: 0 0 18px rgba(124, 255, 155, 0.18), 4px 4px 0 rgba(255, 45, 98, 0.26);
+    }
+
+    .wizwiki-ask-hero-status {
+      display: grid;
+      align-content: center;
+      min-width: 0;
+      gap: 7px;
+      border-left: 1px dotted rgba(247, 247, 242, 0.28);
+      padding-left: 10px;
+    }
+
+    .wizwiki-ask-hero.is-drafting .wizwiki-ask-hero-status {
+      border-left-color: rgba(124, 255, 155, 0.7);
+    }
+
+    .wizwiki-ask-hero-status-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 12px;
+      align-items: baseline;
+      justify-content: space-between;
+      min-width: 0;
+    }
+
+    .wizwiki-ask-hero-status-head strong {
+      min-width: 0;
+      color: #f7f7f2;
+      font-size: 12px;
+      font-weight: 1000;
+      letter-spacing: 0.08em;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-hero-status-head span,
+    .wizwiki-ask-hero-status p {
+      color: rgba(247, 247, 242, 0.58);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      line-height: 1.35;
+      margin: 0;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-hero.is-drafting .wizwiki-ask-hero-status-head span {
+      color: #7cff9b;
+    }
+
+    .wizwiki-ask-hero-progress {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .wizwiki-ask-hero-progress-stack {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .wizwiki-ask-hero-progress {
+      border: 1px dotted rgba(247, 247, 242, 0.22);
+      background: rgba(0, 0, 0, 0.26);
+      padding: 6px 7px;
+    }
+
+    .wizwiki-ask-hero-progress-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: rgba(247, 247, 242, 0.68);
+      font-size: 9px;
+      font-weight: 1000;
+      letter-spacing: 0.14em;
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-hero-progress-head b {
+      color: #ff8dae;
+      font-size: 9px;
+    }
+
+    .wizwiki-ask-hero-progress-head span {
+      color: #7cff9b;
+      font-variant-numeric: tabular-nums;
+      min-width: 46px;
+      text-align: right;
+    }
+
+    .wizwiki-ask-hero-progress .wizwiki-ask-autopilot-thinking-bar,
+    .wizwiki-ask-hero-progress .wizwiki-processing-progress {
+      margin-top: 0;
+    }
+
+    .wizwiki-ask-hero-progress .wizwiki-processing-progress {
+      height: 10px;
+    }
+
+    .wizwiki-ask-hero-signals {
+      display: grid;
+      gap: 3px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .wizwiki-ask-hero-signals li {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: 8px;
+      min-width: 0;
+      color: rgba(247, 247, 242, 0.68);
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .wizwiki-ask-hero-signals b {
+      color: #ff8dae;
+      font-size: 9px;
+      font-weight: 1000;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-hero-signals span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .wizwiki-ask-hero-telemetry {
+      min-width: 0;
+    }
+
+    .wizwiki-ask-autopilot-telemetry--hero {
+      margin-top: 0;
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .wizwiki-ask-autopilot-telemetry--hero .wizwiki-ask-autopilot-telemetry-chips em {
+      max-width: min(420px, 58vw);
+    }
+
+    .wizwiki-ask-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
+      align-items: start;
+    }
+
+    .wizwiki-ask-panel { padding: clamp(14px, 2vw, 22px); }
+
+    .wizwiki-thread-console {
+      display: grid;
+      gap: 12px;
+    }
+
+    .wizwiki-thread-radio {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+
+    .wizwiki-thread-toggle {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      border: 1px dotted rgba(247, 247, 242, 0.22);
+      background: rgba(0, 0, 0, 0.26);
+      padding: 6px;
+    }
+
+    .wizwiki-thread-toggle label {
+      display: inline-flex;
+      min-height: 38px;
+      align-items: center;
+      justify-content: center;
+      border: 1px dotted rgba(247, 247, 242, 0.28);
+      background: rgba(5, 5, 5, 0.82);
+      color: rgba(247, 247, 242, 0.66);
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 1000;
+      letter-spacing: 0.14em;
+      line-height: 1.2;
+      padding: 7px 9px;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-thread-toggle label:hover,
+    .wizwiki-thread-toggle label:focus-visible {
+      border-color: rgba(124, 255, 155, 0.7);
+      color: #f7f7f2;
+      outline: none;
+    }
+
+    #wizwiki-thread-sms:checked ~ .wizwiki-thread-toggle label[for="wizwiki-thread-sms"],
+    #wizwiki-thread-ask:checked ~ .wizwiki-thread-toggle label[for="wizwiki-thread-ask"] {
+      border-color: rgba(124, 255, 155, 0.86);
+      background: rgba(124, 255, 155, 0.14);
+      color: #7cff9b;
+      box-shadow: inset 0 0 18px rgba(124, 255, 155, 0.08), 0 0 16px rgba(124, 255, 155, 0.1);
+    }
+
+    .wizwiki-thread-panels {
+      display: grid;
+      gap: 12px;
+    }
+
+    .wizwiki-thread-panel {
+      display: none;
+      min-width: 0;
+    }
+
+    #wizwiki-thread-sms:checked ~ .wizwiki-thread-panels .wizwiki-thread-panel--sms,
+    #wizwiki-thread-ask:checked ~ .wizwiki-thread-panels .wizwiki-thread-panel--ask {
+      display: grid;
+      gap: 12px;
+    }
+
+    .wizwiki-ask-autopilot {
+      display: grid;
+      gap: 12px;
+      border: 2px dotted rgba(34, 211, 238, 0.42);
+      background:
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 9px),
+        linear-gradient(135deg, rgba(34, 211, 238, 0.1), rgba(5, 5, 5, 0.96) 46%, rgba(124, 255, 155, 0.08));
+      padding: clamp(14px, 2vw, 20px);
+      box-shadow: inset 0 0 24px rgba(34, 211, 238, 0.04), 0 0 28px rgba(124, 255, 155, 0.09);
+    }
+
+    .wizwiki-ask-autopilot.is-active {
+      border-color: rgba(124, 255, 155, 0.62);
+    }
+
+    .wizwiki-ask-autopilot-idle,
+    .wizwiki-ask-autopilot-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .wizwiki-ask-autopilot-idle p {
+      margin: 0;
+      color: rgba(247, 247, 242, 0.7);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-autopilot-actions {
+      justify-content: flex-end;
+    }
+
+    .wizwiki-ask-thread-tools,
+    .wizwiki-copy-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .wizwiki-ask-thread-tools {
+      justify-content: flex-end;
+    }
+
+    .wizwiki-copy-button {
+      border: 1px dotted rgba(124, 255, 155, 0.72);
+      border-radius: 0;
+      background: rgba(5, 5, 5, 0.84);
+      color: #7cff9b;
+      cursor: pointer;
+      font: inherit;
+      font-size: 10px;
+      font-weight: 1000;
+      letter-spacing: 0.12em;
+      line-height: 1;
+      padding: 7px 9px;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-copy-button:hover,
+    .wizwiki-copy-button:focus-visible {
+      background: rgba(124, 255, 155, 0.15);
+      box-shadow: 0 0 14px rgba(124, 255, 155, 0.16);
+      outline: none;
+    }
+
+    .wizwiki-copy-button--mini {
+      padding: 5px 7px;
+      font-size: 9px;
+    }
+
+    .wizwiki-ask-autopilot-actions form,
+    .wizwiki-ask-autopilot-idle form {
+      margin: 0;
+    }
+
+    .wizwiki-ask-autopilot-action-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: end;
+      justify-content: flex-end;
+      min-width: min(420px, 100%);
+    }
+
+    .wizwiki-ask-autopilot-action-form--start {
+      justify-content: flex-start;
+    }
+
+    .wizwiki-ask-autopilot-button {
+      min-height: 40px;
+      border: 2px dotted rgba(124, 255, 155, 0.76);
+      border-radius: 0;
+      background: #050505;
+      color: #7cff9b;
+      cursor: pointer;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 1000;
+      letter-spacing: 0.12em;
+      padding: 9px 14px;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-autopilot-button:hover,
+    .wizwiki-ask-autopilot-button:focus-visible {
+      background: rgba(124, 255, 155, 0.14);
+      box-shadow: inset 0 0 20px rgba(124, 255, 155, 0.12), 0 0 18px rgba(124, 255, 155, 0.14);
+    }
+
+    .wizwiki-ask-autopilot-button--muted {
+      border-color: rgba(255, 255, 255, 0.34);
+      color: rgba(247, 247, 242, 0.72);
+    }
+
+    .wizwiki-ask-autopilot-thread {
+      display: grid;
+      max-height: 360px;
+      gap: 10px;
+      overflow-anchor: none;
+      overflow-y: auto;
+      padding: 4px;
+      overscroll-behavior: contain;
+      scroll-behavior: auto;
+    }
+
+    .wizwiki-ask-autopilot-thinking {
+      border: 1px dotted rgba(124, 255, 155, 0.7);
+      background:
+        repeating-linear-gradient(90deg, rgba(124, 255, 155, 0.08) 0 2px, transparent 2px 10px),
+        rgba(3, 12, 8, 0.9);
+      box-shadow: inset 0 0 22px rgba(124, 255, 155, 0.1), 0 0 20px rgba(124, 255, 155, 0.08);
+      padding: 10px 12px;
+    }
+
+    .wizwiki-ask-autopilot-thinking-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: #f7f7f2;
+      font-size: 12px;
+      font-weight: 1000;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-autopilot-thinking-head span {
+      color: #7cff9b;
+      font-variant-numeric: tabular-nums;
+      min-width: 46px;
+      text-align: right;
+    }
+
+    .wizwiki-ask-autopilot-thinking-bar {
+      height: 10px;
+      margin-top: 9px;
+      overflow: hidden;
+      border: 1px solid rgba(247, 247, 242, 0.24);
+      background: #050505;
+    }
+
+    .wizwiki-ask-autopilot-thinking-bar span {
+      display: block;
+      width: 14%;
+      min-width: 22%;
+      height: 100%;
+      background: linear-gradient(90deg, #7cff9b, #22d3ee, #ff2d62);
+      box-shadow: 0 0 18px rgba(124, 255, 155, 0.5);
+      transition: width 0.35s ease;
+      animation: wizwikiAskAutopilotPulse 1.2s linear infinite;
+    }
+
+    .wizwiki-ask-autopilot-thinking--compact {
+      padding: 8px 10px;
+    }
+
+    .wizwiki-ask-autopilot-thinking--compact .wizwiki-ask-autopilot-thinking-head {
+      font-size: 11px;
+    }
+
+    .wizwiki-ask-autopilot-thinking--compact .wizwiki-ask-autopilot-thinking-bar {
+      height: 8px;
+      margin-top: 7px;
+    }
+
+    .wizwiki-ask-dojo-scoreboard {
+      display: grid;
+      grid-template-columns: minmax(96px, 128px) minmax(0, 1fr);
+      gap: 10px;
+      align-items: stretch;
+      margin: 8px 0 10px;
+      border: 1px dotted rgba(247, 247, 242, 0.26);
+      background:
+        linear-gradient(135deg, rgba(124, 255, 155, 0.12), rgba(34, 211, 238, 0.08) 48%, rgba(255, 45, 98, 0.09)),
+        rgba(5, 5, 5, 0.84);
+      padding: 10px;
+      box-shadow: inset 0 0 18px rgba(247, 247, 242, 0.045);
+    }
+
+    .wizwiki-ask-dojo-scoreboard-main {
+      display: grid;
+      grid-template-columns: auto auto;
+      align-content: center;
+      justify-content: center;
+      gap: 0 3px;
+      min-height: 74px;
+      border: 1px solid rgba(124, 255, 155, 0.26);
+      background: rgba(0, 0, 0, 0.38);
+      color: #f7f7f2;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+    }
+
+    .wizwiki-ask-dojo-scoreboard-main span {
+      grid-column: 1 / -1;
+      color: #22d3ee;
+      font-size: 10px;
+      font-weight: 1000;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-dojo-scoreboard-main strong {
+      align-self: end;
+      color: #7cff9b;
+      font-size: 42px;
+      line-height: 0.92;
+      letter-spacing: 0;
+    }
+
+    .wizwiki-ask-dojo-scoreboard-main em {
+      align-self: end;
+      color: rgba(247, 247, 242, 0.58);
+      font-size: 13px;
+      font-style: normal;
+      font-weight: 900;
+      line-height: 1.15;
+    }
+
+    .wizwiki-ask-dojo-scoreboard-meta {
+      display: grid;
+      align-content: center;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .wizwiki-ask-dojo-scoreboard-meta span {
+      display: grid;
+      grid-template-columns: 64px minmax(0, 1fr);
+      gap: 8px;
+      min-width: 0;
+      color: rgba(247, 247, 242, 0.78);
+      font-size: 11px;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .wizwiki-ask-dojo-scoreboard-meta b {
+      color: #ff8dae;
+      font-size: 9px;
+      font-weight: 1000;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-autopilot-telemetry {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+      border-top: 1px dotted rgba(247, 247, 242, 0.22);
+      padding-top: 10px;
+      color: rgba(247, 247, 242, 0.72);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .wizwiki-ask-autopilot-telemetry--compact {
+      gap: 6px;
+      margin-top: 8px;
+      padding-top: 8px;
+      font-size: 10px;
+      line-height: 1.25;
+    }
+
+    .wizwiki-ask-autopilot-telemetry-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .wizwiki-ask-autopilot-telemetry-chips span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 24px;
+      border: 1px dotted rgba(34, 211, 238, 0.44);
+      background: rgba(34, 211, 238, 0.08);
+      padding: 4px 7px;
+      color: #f7f7f2;
+      overflow-wrap: anywhere;
+    }
+
+    .wizwiki-ask-autopilot-telemetry-chips b {
+      flex: 0 0 auto;
+      color: #22d3ee;
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-autopilot-telemetry-chips em {
+      font-style: normal;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .wizwiki-ask-autopilot-telemetry--compact .wizwiki-ask-autopilot-telemetry-chips {
+      gap: 5px;
+    }
+
+    .wizwiki-ask-autopilot-telemetry--compact .wizwiki-ask-autopilot-telemetry-chips span {
+      min-height: 21px;
+      max-width: 100%;
+      padding: 3px 6px;
+    }
+
+    .wizwiki-ask-autopilot-telemetry--compact .wizwiki-ask-autopilot-telemetry-chips b {
+      font-size: 8px;
+    }
+
+    .wizwiki-ask-autopilot-telemetry--compact .wizwiki-ask-autopilot-telemetry-chips em {
+      max-width: 340px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .wizwiki-ask-autopilot-telemetry-timeline {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+      gap: 6px;
+    }
+
+    .wizwiki-ask-autopilot-telemetry-timeline span {
+      display: grid;
+      gap: 2px;
+      border: 1px dotted rgba(124, 255, 155, 0.32);
+      background: rgba(124, 255, 155, 0.055);
+      padding: 6px 8px;
+      min-width: 0;
+    }
+
+    .wizwiki-ask-autopilot-telemetry-timeline b {
+      color: #7cff9b;
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-autopilot-telemetry-timeline strong {
+      color: #f7f7f2;
+      font-size: 15px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.15;
+    }
+
+    .wizwiki-ask-autopilot-telemetry-timeline small {
+      color: rgba(247, 247, 242, 0.52);
+      font-size: 10px;
+      line-height: 1.25;
+    }
+
+    .wizwiki-ask-autopilot-telemetry p,
+    .wizwiki-ask-autopilot-telemetry ul {
+      margin: 0;
+    }
+
+    .wizwiki-ask-autopilot-telemetry p {
+      color: rgba(247, 247, 242, 0.82);
+    }
+
+    .wizwiki-ask-autopilot-telemetry ul {
+      display: grid;
+      gap: 5px;
+      padding-left: 0;
+      list-style: none;
+    }
+
+    .wizwiki-ask-autopilot-telemetry li {
+      display: grid;
+      grid-template-columns: 78px minmax(0, 1fr);
+      gap: 8px;
+      color: rgba(247, 247, 242, 0.64);
+    }
+
+    .wizwiki-ask-autopilot-telemetry li b {
+      color: #ff8dae;
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-autopilot-telemetry li span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .wizwiki-ask-autopilot-alert {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+      border: 2px solid rgba(255, 45, 98, 0.72);
+      background:
+        linear-gradient(135deg, rgba(255, 45, 98, 0.14), rgba(0, 0, 0, 0.76)),
+        rgba(0, 0, 0, 0.72);
+      padding: 12px;
+      color: #f7f7f2;
+      animation: wizwikiAskAutopilotAlertFlash 1.1s ease-in-out infinite;
+    }
+
+    .wizwiki-ask-autopilot-alert-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .wizwiki-ask-autopilot-alert-head strong {
+      color: #ff8dae;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-autopilot-alert-head span {
+      color: rgba(247, 247, 242, 0.62);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-autopilot-alert p,
+    .wizwiki-ask-autopilot-alert ul {
+      margin: 0;
+    }
+
+    .wizwiki-ask-autopilot-alert > p {
+      color: rgba(247, 247, 242, 0.86);
+      line-height: 1.45;
+    }
+
+    .wizwiki-ask-autopilot-alert ul {
+      display: grid;
+      gap: 6px;
+      padding-left: 0;
+      list-style: none;
+    }
+
+    .wizwiki-ask-autopilot-alert li {
+      display: grid;
+      grid-template-columns: 96px minmax(0, 1fr);
+      gap: 8px;
+      color: rgba(247, 247, 242, 0.74);
+      line-height: 1.45;
+    }
+
+    .wizwiki-ask-autopilot-alert li b {
+      color: #ff8dae;
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-autopilot-alert li span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .autos-ask-autopilot-rag-trace {
+      display: grid;
+      gap: 7px;
+      border-top: 1px dotted rgba(247, 247, 242, 0.2);
+      padding-top: 8px;
+    }
+
+    .autos-ask-autopilot-rag-trace > strong {
+      color: #7cff9b;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .autos-ask-autopilot-rag-trace > div {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .autos-ask-autopilot-rag-trace > div span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 23px;
+      border: 1px dotted rgba(124, 255, 155, 0.38);
+      background: rgba(124, 255, 155, 0.06);
+      padding: 4px 7px;
+      color: rgba(247, 247, 242, 0.84);
+      overflow-wrap: anywhere;
+    }
+
+    .autos-ask-autopilot-rag-trace > div b {
+      color: #7cff9b;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .autos-ask-autopilot-rag-trace p {
+      color: rgba(247, 247, 242, 0.62);
+      font-size: 11px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .autos-ask-autopilot-rag-trace ul {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding-left: 0;
+      list-style: none;
+    }
+
+    .autos-ask-autopilot-rag-trace li {
+      display: grid;
+      gap: 3px;
+      border-left: 2px solid rgba(124, 255, 155, 0.34);
+      padding-left: 8px;
+      color: rgba(247, 247, 242, 0.68);
+    }
+
+    .autos-ask-autopilot-rag-trace li b {
+      color: #7cff9b;
+      font-size: 10px;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .autos-ask-autopilot-rag-trace li span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .wizwiki-ask-sms-bubble {
+      display: grid;
+      max-width: min(78%, 680px);
+      gap: 7px;
+      border: 1px dotted rgba(255, 255, 255, 0.36);
+      background: rgba(255, 255, 255, 0.055);
+      padding: 10px 12px;
+    }
+
+    .wizwiki-ask-sms-bubble--outbound {
+      justify-self: end;
+      border-color: rgba(124, 255, 155, 0.5);
+      background: rgba(124, 255, 155, 0.1);
+    }
+
+    .wizwiki-ask-sms-bubble--inbound {
+      justify-self: start;
+      border-color: rgba(34, 211, 238, 0.52);
+      background: rgba(34, 211, 238, 0.09);
+    }
+
+    .wizwiki-ask-sms-bubble--dojo {
+      justify-self: stretch;
+      max-width: 100%;
+      border-color: rgba(255, 255, 255, 0.5);
+      background:
+        repeating-linear-gradient(90deg, rgba(124, 255, 155, 0.07) 0 1px, transparent 1px 8px),
+        linear-gradient(135deg, rgba(124, 255, 155, 0.1), rgba(5, 5, 5, 0.92) 48%, rgba(34, 211, 238, 0.08));
+      box-shadow: inset 0 0 18px rgba(124, 255, 155, 0.07);
+    }
+
+    .wizwiki-ask-dojo-grade {
+      display: grid !important;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 7px !important;
+      margin: 0;
+    }
+
+    .wizwiki-ask-dojo-grade div,
+    .wizwiki-ask-dojo-summary span {
+      display: grid !important;
+      gap: 3px !important;
+      border: 1px dotted rgba(124, 255, 155, 0.32);
+      background: rgba(0, 0, 0, 0.28);
+      padding: 7px;
+    }
+
+    .wizwiki-ask-dojo-grade dt,
+    .wizwiki-ask-dojo-grade dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .wizwiki-ask-dojo-grade dt,
+    .wizwiki-ask-dojo-summary span {
+      color: rgba(247, 247, 242, 0.58);
+      font-size: 9px;
+      font-weight: 1000;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-dojo-grade dd {
+      color: #7cff9b;
+      font-size: 13px;
+      font-weight: 1000;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-dojo-summary {
+      display: grid !important;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 7px !important;
+    }
+
+    .wizwiki-ask-dojo-summary span {
+      color: #7cff9b;
+      line-height: 1.25;
+    }
+
+    .wizwiki-ask-dojo-scroll-links {
+      display: flex !important;
+      flex-wrap: wrap;
+      gap: 8px !important;
+      justify-content: flex-start !important;
+      letter-spacing: 0 !important;
+      text-transform: none !important;
+    }
+
+    .wizwiki-ask-dojo-scroll-link {
+      display: grid;
+      min-width: min(100%, 230px);
+      max-width: 100%;
+      gap: 2px;
+      border: 1px dotted rgba(255, 255, 255, 0.28);
+      background: rgba(0, 0, 0, 0.32);
+      padding: 8px 10px;
+      text-decoration: none;
+      overflow-wrap: anywhere;
+    }
+
+    .wizwiki-ask-dojo-scroll-link span {
+      font-size: 9px;
+      font-weight: 1000;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-dojo-scroll-link strong {
+      color: #f7f7f2;
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .wizwiki-ask-dojo-scroll-link--full-day {
+      border-color: rgba(124, 255, 155, 0.5);
+    }
+
+    .wizwiki-ask-dojo-scroll-link--full-day span {
+      color: #7cff9b;
+    }
+
+    .wizwiki-ask-dojo-scroll-link--session {
+      border-color: rgba(34, 211, 238, 0.5);
+    }
+
+    .wizwiki-ask-dojo-scroll-link--session span {
+      color: #22d3ee;
+    }
+
+    .wizwiki-ask-sms-bubble div {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: space-between;
+      color: rgba(247, 247, 242, 0.58);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-sms-bubble p {
+      margin: 0;
+      color: #f7f7f2;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .wizwiki-ask-form { display: grid; gap: 14px; }
+
+    .wizwiki-ask-dojo-scope,
+    .wizwiki-ask-dojo-form {
+      display: grid;
+      gap: 10px;
+    }
+
+    .wizwiki-ask-textarea,
+    .wizwiki-ask-context-input {
+      width: 100%;
+      border: 2px dotted rgba(255, 255, 255, 0.62);
+      border-radius: 0;
+      background: #111515;
+      color: #7cff9b;
+      font: inherit;
+      outline: none;
+      padding: 14px;
+    }
+
+    @keyframes wizwikiElectricTouch {
+      0% {
+        border-color: rgba(34, 211, 238, 0.98);
+        box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.28), 0 0 16px rgba(34, 211, 238, 0.36), inset 0 0 16px rgba(124, 255, 155, 0.06);
+        filter: brightness(1.12);
+      }
+      22% {
+        border-color: rgba(124, 255, 155, 0.98);
+        box-shadow: 0 0 0 2px rgba(124, 255, 155, 0.18), 0 0 24px rgba(124, 255, 155, 0.24), inset 0 0 18px rgba(34, 211, 238, 0.08);
+        filter: brightness(0.94);
+      }
+      42% {
+        border-color: rgba(255, 255, 255, 0.86);
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 0 8px rgba(34, 211, 238, 0.28), inset 0 0 14px rgba(124, 255, 155, 0.04);
+        filter: brightness(1.06);
+      }
+      66% {
+        border-color: rgba(34, 211, 238, 0.9);
+        box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.16), 0 0 20px rgba(34, 211, 238, 0.28), inset 0 0 18px rgba(124, 255, 155, 0.06);
+        filter: brightness(1);
+      }
+      100% {
+        border-color: #7cff9b;
+        box-shadow: 0 0 0 3px rgba(124, 255, 155, 0.12), inset 0 0 18px rgba(124, 255, 155, 0.05);
+        filter: brightness(1);
+      }
+    }
+
+    .wizwiki-ask-textarea:focus,
+    .wizwiki-ask-context-input:focus {
+      border-color: #7cff9b;
+      background:
+        linear-gradient(180deg, rgba(34, 211, 238, 0.05), rgba(124, 255, 155, 0.018)),
+        #0b1010 !important;
+      box-shadow: 0 0 0 3px rgba(124, 255, 155, 0.12), inset 0 0 18px rgba(124, 255, 155, 0.05);
+      animation: wizwikiElectricTouch 620ms steps(4, end) 1;
+    }
+
+    .wizwiki-ask-input-wrap:focus-within .wizwiki-ask-label {
+      color: #7cff9b;
+      text-shadow: 0 0 10px rgba(124, 255, 155, 0.44), 0 0 18px rgba(34, 211, 238, 0.24);
+      animation: wizwikiElectricTouch 620ms steps(4, end) 1;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .wizwiki-ask-textarea:focus,
+      .wizwiki-ask-context-input:focus,
+      .wizwiki-ask-input-wrap:focus-within .wizwiki-ask-label {
+        animation: none;
+      }
+    }
+
+    .wizwiki-ask-voice-select-label {
+      display: grid;
+      gap: 5px;
+      color: rgba(247, 247, 242, 0.68);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.18em;
+      line-height: 1.4;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-llm-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px;
+      align-items: end;
+      border: 1px dotted rgba(124, 255, 155, 0.3);
+      background: rgba(0, 0, 0, 0.24);
+      padding: 8px;
+    }
+
+    .wizwiki-ask-llm-row > span {
+      min-width: 0;
+      overflow: hidden;
+      color: rgba(247, 247, 242, 0.72);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .wizwiki-ask-llm-select-label {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+      color: rgba(247, 247, 242, 0.68);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.18em;
+      line-height: 1.4;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-ask-llm-select-label--compact {
+      width: min(260px, 100%);
+    }
+
+    .wizwiki-ask-llm-select {
+      width: 100%;
+      min-width: 0;
+      border: 2px dotted rgba(124, 255, 155, 0.52);
+      border-radius: 0;
+      background: #050505;
+      color: #7cff9b;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      outline: none;
+      padding: 9px 10px;
+      text-transform: uppercase;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .wizwiki-ask-llm-select:focus {
+      border-color: #7cff9b;
+      background: #151b1b;
+      box-shadow: 0 0 0 3px rgba(124, 255, 155, 0.12), inset 0 0 18px rgba(124, 255, 155, 0.05);
+    }
+
+    .wizwiki-ask-voice-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .wizwiki-ask-voice-select {
+      width: 100%;
+      border: 2px dotted rgba(255, 255, 255, 0.52);
+      border-radius: 0;
+      background: #050505;
+      color: #7cff9b;
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      outline: none;
+      padding: 10px 12px;
+      text-transform: uppercase;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .wizwiki-ask-voice-select:focus {
+      border-color: #7cff9b;
+      background: #151b1b;
+      box-shadow: 0 0 0 3px rgba(124, 255, 155, 0.12), inset 0 0 18px rgba(124, 255, 155, 0.05);
+    }
+
+    .wizwiki-voice-test {
+      min-height: 44px;
+      border: 2px dotted rgba(124, 255, 155, 0.72);
+      border-radius: 0;
+      background: #050505;
+      color: #7cff9b;
+      cursor: pointer;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 1000;
+      letter-spacing: 0.12em;
+      padding: 10px 12px;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-voice-test.is-speaking,
+    .wizwiki-voice-test:hover,
+    .wizwiki-voice-test:focus-visible {
+      background: rgba(124, 255, 155, 0.12);
+      box-shadow: inset 0 0 22px rgba(124, 255, 155, 0.12), 0 0 22px rgba(124, 255, 155, 0.16);
+    }
+
+    .wizwiki-ask-context {
+      border: 1px dotted rgba(255, 255, 255, 0.32);
+      background: rgba(255, 255, 255, 0.035);
+      padding: 10px;
+    }
+
+    .wizwiki-ask-context summary { cursor: pointer; font-size: 11px; font-weight: 900; letter-spacing: 0.18em; text-transform: uppercase; }
+
+    .wizwiki-ask-controls {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: minmax(0, 0.9fr) minmax(150px, 1.1fr) minmax(0, 0.9fr);
+      grid-template-areas:
+        "full ask walkie"
+        ". stop .";
+      align-items: stretch;
+    }
+
+    .wizwiki-talk-toggle { grid-area: full; }
+    .wizwiki-stop-talk { grid-area: stop; }
+    .wizwiki-walkie { grid-area: walkie; }
+    .wizwiki-ask-submit { grid-area: ask; }
+
+    .wizwiki-ask-controls--autopilot {
+      grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr);
+      grid-template-areas: "ask dojo";
+    }
+
+    .wizwiki-ask-controls--reply-only {
+      grid-template-columns: minmax(150px, 1fr);
+      grid-template-areas: "ask";
+    }
+
+    .wizwiki-talk-toggle,
+    .wizwiki-stop-talk,
+    .wizwiki-walkie,
+    .wizwiki-ask-submit,
+    .wizwiki-ear,
+    .wizwiki-cancel-button {
+      min-height: 46px;
+      border: 2px dotted rgba(255, 255, 255, 0.64);
+      border-radius: 0;
+      background: #050505;
+      color: #f7f7f2;
+      cursor: pointer;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 1000;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-talk-toggle.is-on,
+    .wizwiki-walkie.is-recording,
+    .wizwiki-ask-submit {
+      border-color: rgba(124, 255, 155, 0.86);
+      color: #7cff9b;
+      box-shadow: inset 0 0 22px rgba(124, 255, 155, 0.12), 0 0 22px rgba(124, 255, 155, 0.16);
+    }
+
+    .wizwiki-ask-submit--dojo {
+      grid-area: dojo;
+      border-color: rgba(34, 211, 238, 0.82);
+      color: #22d3ee;
+      box-shadow: inset 0 0 22px rgba(34, 211, 238, 0.1), 0 0 22px rgba(34, 211, 238, 0.13);
+    }
+
+    .wizwiki-ask-dojo-form .wizwiki-ask-submit--dojo {
+      grid-area: auto;
+      width: 100%;
+    }
+
+    .wizwiki-ask-submit--dojo:hover,
+    .wizwiki-ask-submit--dojo:focus-visible {
+      background: rgba(34, 211, 238, 0.12);
+      color: #f7f7f2;
+      outline: none;
+    }
+
+    .wizwiki-stop-talk { border-color: rgba(255, 45, 98, 0.72); color: #ff8dae; }
+    .wizwiki-cancel-button { min-height: 34px; padding: 0 12px; border-color: rgba(255, 45, 98, 0.78); color: #ff8dae; }
+    .wizwiki-cancel-button:hover,
+    .wizwiki-cancel-button:focus-visible {
+      background: rgba(255, 45, 98, 0.14);
+      box-shadow: inset 0 0 18px rgba(255, 45, 98, 0.12), 0 0 18px rgba(255, 45, 98, 0.16);
+    }
+
+    .wizwiki-ask-pending {
+      border: 1px dotted rgba(255, 45, 98, 0.75);
+      background: rgba(80, 0, 24, 0.25);
+      padding: 12px;
+    }
+
+    .wizwiki-ask-pending > div:first-child { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; }
+    .wizwiki-ask-pending-meta { display: inline-flex; align-items: center; justify-content: flex-end; gap: 10px; text-align: right; }
+    .wizwiki-ask-pending-timer {
+      color: #7cff9b;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.08em;
+      min-width: 46px;
+    }
+
+    .wizwiki-ask-progress { height: 10px; margin-top: 10px; overflow: hidden; border: 1px dotted rgba(255,255,255,0.4); background: black; }
+    .wizwiki-ask-progress span { display: block; width: 40%; height: 100%; background: linear-gradient(90deg, #7cff9b, #ff2d62); animation: wizwikiAskProgress 1.3s linear infinite; }
+
+    @keyframes wizwikiAskAutopilotPulse {
+      0% { filter: hue-rotate(0deg); opacity: 0.78; }
+      50% { filter: hue-rotate(28deg); opacity: 1; }
+      100% { filter: hue-rotate(0deg); opacity: 0.78; }
+    }
+
+    @keyframes wizwikiAskAutopilotAlertFlash {
+      0% { border-color: rgba(255, 45, 98, 0.56); box-shadow: inset 0 0 0 rgba(255, 45, 98, 0), 0 0 0 rgba(255, 45, 98, 0); }
+      50% { border-color: rgba(255, 45, 98, 1); box-shadow: inset 0 0 22px rgba(255, 45, 98, 0.12), 0 0 24px rgba(255, 45, 98, 0.22); }
+      100% { border-color: rgba(255, 45, 98, 0.56); box-shadow: inset 0 0 0 rgba(255, 45, 98, 0), 0 0 0 rgba(255, 45, 98, 0); }
+    }
+
+    .wizwiki-answer-stream {
+      display: grid;
+      gap: 12px;
+      max-height: 72vh;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .wizwiki-answer-card { padding: 14px; }
+    .wizwiki-answer-card.is-answered { border-color: rgba(124, 255, 155, 0.55); }
+    .wizwiki-answer-meta { display: flex; justify-content: space-between; gap: 10px; color: rgba(247,247,242,0.55); }
+    .wizwiki-answer-prompt { margin-top: 14px; border-left: 2px dotted #ff2d62; padding-left: 12px; }
+    .wizwiki-answer-prompt span, .wizwiki-answer-output-head span { color: #ff8dae; font-size: 10px; font-weight: 900; letter-spacing: 0.2em; text-transform: uppercase; }
+    .wizwiki-answer-prompt p, .wizwiki-answer-text { margin-top: 8px; white-space: pre-wrap; line-height: 1.65; }
+    .wizwiki-answer-prompt small { display: block; margin-top: 8px; color: rgba(247,247,242,0.52); }
+    .wizwiki-answer-output { margin-top: 14px; border: 1px dotted rgba(124,255,155,0.42); background: rgba(0,0,0,0.35); padding: 12px; }
+    .wizwiki-answer-output-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .wizwiki-answer-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+    .wizwiki-answer-actions form { margin: 0; }
+    .wizwiki-answer-text { color: #f7f7f2; }
+    .wizwiki-answer-links { margin-top: 12px; border-top: 1px dotted rgba(247,247,242,0.22); padding-top: 10px; }
+    .wizwiki-answer-links > span { display: block; color: #7cff9b; font-size: 10px; font-weight: 900; letter-spacing: 0.18em; text-transform: uppercase; }
+    .wizwiki-answer-links > div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .wizwiki-answer-link { display: inline-flex; min-height: 34px; align-items: center; gap: 7px; border: 1px dotted rgba(124,255,155,0.5); background: rgba(124,255,155,0.08); padding: 7px 9px; color: #f7f7f2; font-size: 12px; text-decoration: none; }
+    .wizwiki-answer-link:hover { background: #7cff9b; color: #050505; }
+    .wizwiki-answer-link b { color: #ff8dae; font-size: 9px; letter-spacing: 0.14em; }
+    .wizwiki-answer-link:hover b { color: #050505; }
+    .wizwiki-answer-link small { color: rgba(247,247,242,0.58); }
+    .wizwiki-answer-link:hover small { color: rgba(5,5,5,0.7); }
+    .wizwiki-follow-up-actions {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+      border-top: 1px dotted rgba(34, 211, 238, 0.28);
+      padding-top: 10px;
+    }
+    .wizwiki-follow-up-actions > span {
+      color: #22d3ee;
+      font-size: 10px;
+      font-weight: 1000;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    .wizwiki-follow-up-actions > div {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .wizwiki-follow-up-form { margin: 0; }
+    .wizwiki-follow-up-button {
+      min-height: 34px;
+      border: 1px dotted rgba(124, 255, 155, 0.72);
+      border-radius: 0;
+      background: rgba(124, 255, 155, 0.1);
+      color: #7cff9b;
+      cursor: pointer;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 1000;
+      letter-spacing: 0.14em;
+      padding: 7px 14px;
+      text-transform: uppercase;
+    }
+    .wizwiki-follow-up-button--no {
+      border-color: rgba(255, 45, 98, 0.66);
+      background: rgba(255, 45, 98, 0.08);
+      color: #ff8dae;
+    }
+    .wizwiki-follow-up-button:hover,
+    .wizwiki-follow-up-button:focus-visible {
+      background: #7cff9b;
+      color: #050505;
+      box-shadow: 0 0 18px rgba(124, 255, 155, 0.18);
+    }
+    .wizwiki-follow-up-button--no:hover,
+    .wizwiki-follow-up-button--no:focus-visible {
+      background: #ff8dae;
+      color: #050505;
+      box-shadow: 0 0 18px rgba(255, 45, 98, 0.18);
+    }
+    .wizwiki-answer-wait { color: rgba(247,247,242,0.6); }
+    .wizwiki-ear { min-height: 34px; padding: 0 12px; }
+    .wizwiki-ear.is-warming { cursor: wait; opacity: 0.7; }
+    .wizwiki-processing { display: grid; gap: 9px; color: rgba(247,247,242,0.62); font-size: 13px; }
+    .wizwiki-processing-head { display: flex; align-items: center; gap: 5px; }
+    .wizwiki-processing span { display: inline-block; color: #7cff9b; animation: wizwikiBlink 1.1s steps(2, end) infinite; }
+    .wizwiki-processing span:nth-child(2) { animation-delay: 0.18s; }
+    .wizwiki-processing span:nth-child(3) { animation-delay: 0.36s; }
+    .wizwiki-processing strong {
+      margin-left: auto;
+      color: #7cff9b;
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.1em;
+    }
+    .wizwiki-processing p { margin: 0; }
+    .wizwiki-processing-progress {
+      height: 8px;
+      overflow: hidden;
+      border: 1px dotted rgba(124,255,155,0.44);
+      background: #050505;
+    }
+    .wizwiki-processing-progress i {
+      display: block;
+      width: 14%;
+      min-width: 22%;
+      height: 100%;
+      background: linear-gradient(90deg, #7cff9b, #22d3ee, #ff2d62);
+      box-shadow: 0 0 16px rgba(124,255,155,0.42);
+      transition: width 0.35s ease;
+      animation: wizwikiAskAutopilotPulse 1.2s linear infinite;
+    }
+
+    .wizwiki-usage-review {
+      display: grid;
+      gap: 11px;
+      border: 2px dotted rgba(34, 211, 238, 0.42);
+      background:
+        linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(255, 45, 98, 0.08)),
+        rgba(0, 0, 0, 0.42);
+      padding: clamp(12px, 2vw, 18px);
+      box-shadow: inset 0 0 24px rgba(34, 211, 238, 0.05), 0 0 28px rgba(255, 45, 98, 0.1);
+    }
+
+    .wizwiki-usage-head,
+    .wizwiki-usage-metrics,
+    .wizwiki-usage-memory,
+    .wizwiki-usage-split,
+    .wizwiki-usage-days,
+    .wizwiki-usage-grid {
+      display: grid;
+      gap: 8px;
+    }
+
+    .wizwiki-usage-head {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+    }
+
+    .wizwiki-usage-head span,
+    .wizwiki-usage-head small,
+    .wizwiki-usage-metrics span,
+    .wizwiki-usage-metrics small,
+    .wizwiki-usage-memory span,
+    .wizwiki-usage-memory small,
+    .wizwiki-usage-insight span,
+    .wizwiki-usage-insight small,
+    .wizwiki-usage-days span {
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      line-height: 1.25;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-usage-head span,
+    .wizwiki-usage-insight span {
+      color: #7cff9b;
+    }
+
+    .wizwiki-usage-head strong {
+      color: white;
+      font-size: 13px;
+      text-align: right;
+      text-transform: uppercase;
+    }
+
+    .wizwiki-usage-head small {
+      grid-column: 1 / -1;
+      color: rgba(247, 247, 242, 0.62);
+    }
+
+    .wizwiki-usage-metrics {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .wizwiki-usage-memory {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .wizwiki-usage-metrics div,
+    .wizwiki-usage-memory div,
+    .wizwiki-usage-insight {
+      border: 1px dotted rgba(247, 247, 242, 0.22);
+      background: rgba(0, 0, 0, 0.34);
+      padding: 9px;
+    }
+
+    .wizwiki-usage-metrics strong,
+    .wizwiki-usage-memory strong {
+      display: block;
+      color: white;
+      font-size: clamp(1.1rem, 2.5vw, 1.7rem);
+      line-height: 0.95;
+      overflow-wrap: anywhere;
+      text-shadow: 0 0 13px rgba(34, 211, 238, 0.22);
+    }
+
+    .wizwiki-usage-memory strong {
+      font-size: clamp(0.9rem, 1.8vw, 1.25rem);
+      line-height: 1.15;
+    }
+
+    .wizwiki-usage-metrics span,
+    .wizwiki-usage-memory span,
+    .wizwiki-usage-days span {
+      color: rgba(247, 247, 242, 0.72);
+    }
+
+    .wizwiki-usage-metrics small,
+    .wizwiki-usage-memory small,
+    .wizwiki-usage-insight small {
+      color: rgba(247, 247, 242, 0.48);
+    }
+
+    .wizwiki-usage-split {
+      grid-template-columns: minmax(0, 1fr) minmax(180px, 0.72fr);
+      align-items: start;
+    }
+
+    .wizwiki-usage-insight p {
+      margin: 5px 0 7px;
+      color: rgba(247, 247, 242, 0.84);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .wizwiki-usage-days,
+    .wizwiki-usage-grid {
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .wizwiki-usage-day {
+      display: grid;
+      min-height: 23px;
+      place-items: center;
+      border: 1px dotted rgba(247, 247, 242, 0.2);
+      background: rgba(255, 255, 255, 0.035);
+      color: rgba(247, 247, 242, 0.56);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .wizwiki-usage-day--1 { background: rgba(124, 255, 155, 0.12); color: white; }
+    .wizwiki-usage-day--2 { background: rgba(34, 211, 238, 0.18); color: white; }
+    .wizwiki-usage-day--3 { background: rgba(255, 45, 98, 0.22); color: white; }
+    .wizwiki-usage-day--4 { background: linear-gradient(135deg, rgba(124, 255, 155, 0.52), rgba(255, 45, 98, 0.5)); color: #050505; }
+    .wizwiki-usage-day--blank { opacity: 0; }
+
+    @keyframes wizwikiAskProgress { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+    @keyframes wizwikiBlink { 50% { opacity: 0.18; } }
+
+    @media (max-width: 900px) {
+      .wizwiki-ask-hero { grid-template-columns: 1fr; }
+      .wizwiki-ask-hero-status {
+        border-left: 0;
+        border-top: 1px dotted rgba(247, 247, 242, 0.24);
+        padding-top: 8px;
+        padding-left: 0;
+      }
+      .wizwiki-ask-grid { grid-template-columns: 1fr; }
+      .wizwiki-usage-metrics,
+      .wizwiki-usage-memory,
+      .wizwiki-usage-split { grid-template-columns: 1fr; }
+      .wizwiki-ask-controls {
+        grid-template-columns: minmax(0, 1fr) minmax(150px, 1fr) minmax(0, 1fr);
+        grid-template-areas:
+          "full ask walkie"
+          ". stop .";
+      }
+      .wizwiki-answer-stream { max-height: none; }
+    }
+
+    @media (max-width: 540px) {
+      .wizwiki-ask-controls {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "ask"
+          "full"
+          "walkie"
+          "stop";
+      }
+      .wizwiki-ask-controls--autopilot {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "ask"
+          "dojo";
+      }
+      .wizwiki-answer-meta, .wizwiki-answer-output-head { display: grid; }
+      .wizwiki-ask-sms-bubble { max-width: 100%; }
+      .wizwiki-ask-dojo-grade,
+      .wizwiki-ask-dojo-summary { grid-template-columns: 1fr; }
+    }
+  </style>
+  <script>
+    (() => {
+      const copyScriptVersion = "copy-thread-asc-2026-06-30.3"
+      if (window.__wizwikiAskCopyButtons === copyScriptVersion) return
+      window.__wizwikiAskCopyButtons = copyScriptVersion
+
+      const threadText = (button) => {
+        const root = document.querySelector(button.dataset.wizwikiCopyThread)
+        if (!root) return ""
+
+        const rows = Array.from(root.querySelectorAll("[data-wizwiki-copy-line]")).map((node, index) => ({
+          index,
+          text: node.dataset.wizwikiCopyLine || node.textContent.trim(),
+          time: Date.parse(node.dataset.wizwikiCopyTime || "")
+        }))
+
+        const sortByTime = (direction) => {
+          rows.sort((left, right) => {
+            const leftTimed = Number.isFinite(left.time)
+            const rightTimed = Number.isFinite(right.time)
+            if (leftTimed && rightTimed && left.time !== right.time) {
+              return direction === "asc" ? left.time - right.time : right.time - left.time
+            }
+            if (leftTimed !== rightTimed) return leftTimed ? -1 : 1
+            return direction === "asc" ? left.index - right.index : right.index - left.index
+          })
+        }
+
+        if (button.dataset.wizwikiCopyReverse === "true") {
+          if (rows.every((row) => Number.isFinite(row.time))) {
+            sortByTime("asc")
+          } else {
+            rows.reverse()
+          }
+        } else if (button.dataset.wizwikiCopyOrder === "desc") {
+          sortByTime("desc")
+        } else if (button.dataset.wizwikiCopyOrder === "asc") {
+          sortByTime("asc")
+        }
+
+        return rows
+          .map((row) => row.text)
+          .filter(Boolean)
+          .join("\n\n")
+      }
+
+      const writeClipboard = async (text) => {
+        if (navigator.clipboard?.writeText && window.isSecureContext) {
+          try {
+            await navigator.clipboard.writeText(text)
+            return
+          } catch (_error) {
+            // Fall through to the textarea fallback when the Clipboard API is exposed but blocked.
+          }
+        }
+
+        const field = document.createElement("textarea")
+        field.value = text
+        field.setAttribute("readonly", "readonly")
+        field.style.position = "fixed"
+        field.style.top = "0"
+        field.style.left = "-9999px"
+        field.style.opacity = "0"
+        document.body.appendChild(field)
+        field.focus({ preventScroll: true })
+        field.select()
+        field.setSelectionRange(0, field.value.length)
+        const copied = document.execCommand("copy")
+        field.remove()
+        if (!copied) throw new Error("Clipboard copy command was rejected")
+      }
+
+      const flash = (button) => {
+        const original = button.dataset.copyOriginalLabel || button.textContent
+        button.dataset.copyOriginalLabel = original
+        button.textContent = "COPIED"
+        window.clearTimeout(button._copyResetTimer)
+        button._copyResetTimer = window.setTimeout(() => {
+          button.textContent = button.dataset.copyOriginalLabel || original
+        }, 1200)
+      }
+
+      const primeDojoForm = (form) => {
+        if (!(form instanceof HTMLFormElement)) return
+        const scope = form.closest("[data-wizwiki-dojo-scope]") || document
+        const guidanceSource = scope.querySelector("[data-wizwiki-dojo-guidance-source]")
+        const guidanceInput = form.querySelector("[data-wizwiki-dojo-guidance-input]")
+        const modelSource = scope.querySelector("[data-wizwiki-dojo-model-source]")
+        const modelInput = form.querySelector("[data-wizwiki-dojo-model-input]")
+        if (guidanceInput && guidanceSource) guidanceInput.value = guidanceSource.value || ""
+        if (modelInput && modelSource) modelInput.value = modelSource.value || modelInput.value || ""
+      }
+
+      const handleCopyClick = async (event) => {
+        const target = event.target instanceof Element ? event.target : event.target?.parentElement
+        const button = target?.closest?.("[data-wizwiki-copy-text], [data-wizwiki-copy-thread]")
+        if (!button) return
+
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        const text = button.dataset.wizwikiCopyText || threadText(button)
+        if (!text) return
+
+        try {
+          await writeClipboard(text)
+          flash(button)
+        } catch (error) {
+          console.warn("Could not copy Thumper text", error)
+        }
+      }
+
+      if (window.__wizwikiAskCopyClickHandler) {
+        document.removeEventListener("click", window.__wizwikiAskCopyClickHandler, true)
+      }
+      window.__wizwikiAskCopyClickHandler = handleCopyClick
+      document.addEventListener("click", handleCopyClick, true)
+
+      document.addEventListener("click", (event) => {
+        const target = event.target instanceof Element ? event.target : event.target?.parentElement
+        const dojoButton = target?.closest?.("[data-wizwiki-dojo-submit]")
+        if (dojoButton) primeDojoForm(dojoButton.form)
+      })
+
+      document.addEventListener("submit", (event) => {
+        const form = event.target
+        if (form instanceof HTMLFormElement && form.matches("[data-wizwiki-dojo-form]")) primeDojoForm(form)
+      }, true)
+    })()
+  </script>
+<% end %>
+
+<section class="wizwiki-ask-console" data-controller="autos-talk" data-autos-talk-ask-url-value="<%= ask_path(format: :turbo_stream) %>">
+  <% hero_test = @ask_autopilot_test.respond_to?(:to_h) ? @ask_autopilot_test.to_h : {} %>
+  <% hero_active = Comms::AskAutopilotTest.active?(hero_test) %>
+  <% hero_pending = hero_active && ActiveModel::Type::Boolean.new.cast(hero_test["pending"]) %>
+  <% hero_pending_started_at = hero_test["pending_started_at"].presence || hero_test["updated_at"].presence %>
+  <% hero_ask_question = Array(@recent_questions).find { |question| question.respond_to?(:ask_refresh_pending?) && question.ask_refresh_pending? } %>
+  <% hero_ask_pending = hero_ask_question.present? %>
+  <% hero_ask_started_at = hero_ask_question&.created_at&.iso8601 %>
+  <% sms_thread_selected = hero_active || !hero_ask_pending %>
+  <% hero_sms_pending_label = hero_test["pending_label"].presence || "SMS simulator drafting" %>
+  <% hero_sms_ready_label = hero_active ? "SMS simulator ready" : "SMS simulator idle" %>
+  <% hero_sms_ready_note = hero_active ? hero_test["engine_label"].presence || "real engine // no twilio" : "start an SMS sim to test" %>
+  <% hero_ask_pending_label = "Ask thread drafting" %>
+  <% hero_ask_ready_label = "Ask thread ready" %>
+  <% hero_status_label = sms_thread_selected ? (hero_pending ? hero_sms_pending_label : hero_sms_ready_label) : (hero_ask_pending ? hero_ask_pending_label : hero_ask_ready_label) %>
+  <% hero_status_note =
+    if sms_thread_selected
+      hero_pending ? "live draft signals" : hero_sms_ready_note
+    else
+      hero_ask_pending ? "Thumper answer stream active" : "Thumper vector context ready"
+    end %>
+
+  <div class="wizwiki-ask-hero <%= "is-drafting" if hero_pending || hero_ask_pending %>"
+       data-wizwiki-ask-hero
+       data-sms-ready-label="<%= hero_sms_ready_label %>"
+       data-sms-ready-note="<%= hero_sms_ready_note %>"
+       data-sms-pending-label="<%= hero_sms_pending_label %>"
+       data-sms-pending-note="live draft signals"
+       data-ask-ready-label="<%= hero_ask_ready_label %>"
+       data-ask-ready-note="Thumper vector context ready"
+       data-ask-pending-label="<%= hero_ask_pending_label %>"
+       data-ask-pending-note="Thumper answer stream active">
+    <div class="wizwiki-ask-hero-main">
+      <p class="wizwiki-ask-kicker">WIZWIKI // Thumper</p>
+      <h1 class="wizwiki-ask-title">Thumper</h1>
+    </div>
+    <div class="wizwiki-ask-hero-status" <% if hero_pending || hero_ask_pending %>role="status" aria-live="polite"<% end %>>
+      <div class="wizwiki-ask-hero-status-head">
+        <strong data-wizwiki-hero-label><%= hero_status_label %></strong>
+        <span data-wizwiki-hero-note><%= hero_status_note %></span>
+      </div>
+      <div class="wizwiki-ask-hero-progress-stack">
+        <div class="wizwiki-ask-hero-progress wizwiki-ask-hero-progress--sms <%= "hidden" unless hero_pending %>" data-wizwiki-hero-sms-progress data-ask-autopilot-thinking data-ask-autopilot-thinking-started-at="<%= hero_pending_started_at %>">
+          <div class="wizwiki-ask-hero-progress-head">
+            <b>SMS Sim</b>
+            <span data-ask-autopilot-thinking-timer>00:00</span>
+          </div>
+          <div class="wizwiki-ask-autopilot-thinking-bar">
+            <span data-ask-autopilot-thinking-bar></span>
+          </div>
+        </div>
+        <div class="wizwiki-ask-hero-progress wizwiki-ask-hero-progress--ask <%= "hidden" unless hero_ask_pending %>" data-wizwiki-hero-ask-progress data-wizwiki-processing-since="<%= hero_ask_started_at %>">
+          <div class="wizwiki-ask-hero-progress-head">
+            <b>Ask Thread</b>
+            <span data-wizwiki-processing-timer>00:00</span>
+          </div>
+          <div class="wizwiki-processing-progress" aria-hidden="true">
+            <i data-wizwiki-processing-bar></i>
+          </div>
+        </div>
+      </div>
+      <%= render "hero_sms_telemetry", ask_autopilot_test: @ask_autopilot_test %>
+    </div>
+  </div>
+
+  <%= render "usage_review", usage_review: @usage_review %>
+
+  <div class="wizwiki-ask-grid">
+    <div class="wizwiki-ask-panel">
+      <div id="autos_question_form">
+        <%= render "form", autos_question: @autos_question, ask_autopilot_test: @ask_autopilot_test %>
+      </div>
+    </div>
+
+    <div class="wizwiki-ask-panel">
+      <div class="wizwiki-thread-console">
+        <input id="wizwiki-thread-sms" class="wizwiki-thread-radio" type="radio" name="wizwiki_thread_view" <%= "checked" if sms_thread_selected %>>
+        <input id="wizwiki-thread-ask" class="wizwiki-thread-radio" type="radio" name="wizwiki_thread_view" <%= "checked" unless sms_thread_selected %>>
+
+        <div class="wizwiki-answer-meta">
+          <span>thread view</span>
+          <span>choose one active thread</span>
+        </div>
+
+        <div class="wizwiki-thread-toggle" role="tablist" aria-label="Thumper thread view">
+          <label for="wizwiki-thread-sms" role="tab">SMS Simulator</label>
+          <label for="wizwiki-thread-ask" role="tab">Ask Thread</label>
+        </div>
+
+        <div class="wizwiki-thread-panels">
+          <div class="wizwiki-thread-panel wizwiki-thread-panel--sms" role="tabpanel" aria-label="SMS simulator thread">
+            <%= render "autopilot_test", ask_autopilot_test: @ask_autopilot_test %>
+          </div>
+
+          <div class="wizwiki-thread-panel wizwiki-thread-panel--ask" role="tabpanel" aria-label="Ask thread">
+            <div class="wizwiki-answer-meta">
+              <span>answer stream</span>
+              <span>Thumper vector context -> Qwen answer -> guarded retry</span>
+              <% if @recent_questions.present? %>
+                <button type="button" class="wizwiki-copy-button" data-wizwiki-copy-thread="#autos_questions" data-wizwiki-copy-order="asc">COPY THREAD</button>
+              <% end %>
+            </div>
+            <div id="autos_questions" class="wizwiki-answer-stream" data-controller="autos-questions" data-autos-questions-url-value="<%= ask_questions_path(format: :turbo_stream) %>" data-autos-questions-interval-value="3000">
+              <% if @recent_questions.present? %>
+                <%= render partial: "question", collection: @recent_questions, as: :question %>
+              <% else %>
+                <p id="autos_questions_empty" class="border border-dotted border-white/30 bg-white/5 p-4 text-zinc-300">No questions queued yet.</p>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

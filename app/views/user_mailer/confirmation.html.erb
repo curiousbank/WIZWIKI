@@ -1,0 +1,17 @@
+<h1>Confirm your WIZWIKI account</h1>
+
+<p>
+  Hi <%= @user.display_name %>,
+</p>
+
+<p>
+  Confirm this email address to activate your Thumper von AUTOS workspace account on wizwiki.local.
+</p>
+
+<p>
+  <%= link_to "Confirm WIZWIKI account", confirmation_url(@user.email_confirmation_token) %>
+</p>
+
+<p>
+  This link expires in 3 days.
+</p>

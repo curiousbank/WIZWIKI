@@ -1,0 +1,170 @@
+<% content_for :title, "TEAM" %>
+<% status_labels = { "profiles" => "PROFILES", "activeish" => "ACTIVE-ISH", "invite_ready" => "INVITE READY", "held" => "HELD" } %>
+<% domain_classes = {
+  "executing" => "border-violet-300/80 text-violet-100",
+  "influencing" => "border-orange-300/80 text-orange-100",
+  "relationship" => "border-sky-300/80 text-sky-100",
+  "strategic" => "border-lime-300/80 text-lime-100"
+} %>
+
+<section data-controller="team-console" class="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+  <div class="border-2 border-dotted border-zinc-500 bg-zinc-950 p-5 shadow-2xl shadow-black/50">
+    <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">team intelligence // strengths map</p>
+    <h1 class="mt-3 font-mono text-5xl font-black tracking-[-0.08em] text-white">TEAM</h1>
+    <p class="mt-3 max-w-3xl font-mono text-sm leading-7 text-zinc-300">
+      Filter imported employee profiles by readiness, Clifton domain, or one shared top trait. The list updates in place; no invite emails are queued.
+    </p>
+
+    <div class="mt-5 grid gap-3 sm:grid-cols-4">
+      <% @profile_counts.each do |key, count| %>
+        <button type="button" data-action="team-console#toggleStatus" data-team-console-target="statusButton" data-status="<%= key %>" aria-pressed="<%= key == 'profiles' %>" class="team-filter-button border border-dotted border-zinc-500 bg-zinc-900/80 p-3 text-left text-zinc-100 transition hover:bg-zinc-800">
+          <span class="block font-mono text-[10px] uppercase tracking-[0.22em]"><%= status_labels[key] %></span>
+          <strong data-team-console-target="statusCount" data-status-count="<%= key %>" class="mt-1 block font-mono text-3xl"><%= count %></strong>
+        </button>
+      <% end %>
+    </div>
+
+    <div class="mt-5 border border-dotted border-white/20 bg-black/50 p-4">
+      <p class="font-mono text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">future invite path</p>
+      <p class="mt-2 font-mono text-xs leading-6 text-zinc-300">
+        Management approves the list, then each selected employee gets one custom claim email with a setup code, password creation, and email confirmation. Current profile data stays separate until the real user claims it.
+      </p>
+    </div>
+  </div>
+
+  <div class="grid gap-5">
+    <div class="border border-dotted border-zinc-500 bg-[#101010] p-5">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">Clifton domains</p>
+          <h2 class="mt-2 font-mono text-2xl font-black text-white">One domain at a time</h2>
+        </div>
+        <button type="button" data-action="team-console#clearFilters" class="border border-dotted border-zinc-500 bg-zinc-900 px-3 py-2 font-mono text-[10px] font-black text-zinc-200 hover:bg-white hover:text-black">CLEAR</button>
+      </div>
+
+      <div class="mt-4 grid gap-3 sm:grid-cols-2">
+        <% EmployeeProfile::CLIFTON_DOMAINS.each do |key, config| %>
+          <button type="button" data-action="team-console#toggleDomain" data-team-console-target="domainButton" data-domain="<%= key %>" aria-pressed="false" class="team-filter-button border-2 border-dotted <%= domain_classes[key] %> bg-zinc-950 p-4 text-left transition hover:bg-zinc-800">
+            <span class="flex items-center justify-between gap-3">
+              <strong class="font-mono text-sm uppercase tracking-[0.18em]"><%= config[:label] %></strong>
+              <span data-team-console-target="domainCount" data-domain-count="<%= key %>" class="font-mono text-xs"><%= @domain_counts[key].to_i %></span>
+            </span>
+            <span class="mt-3 block font-mono text-[11px] leading-5 text-zinc-400"><%= config[:strengths].join(" // ") %></span>
+          </button>
+        <% end %>
+      </div>
+
+      <div class="mt-5 border-t border-dotted border-white/20 pt-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">shared top traits</p>
+            <h3 class="mt-2 font-mono text-xl font-black text-white">Pick multiple top 4 traits</h3>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" hidden data-team-console-target="traitClear" data-action="team-console#clearTraits" class="team-filter-chip border border-dotted px-3 py-2 font-mono text-[10px] font-black">CLEAR TRAITS</button>
+            <p data-team-console-target="visibleCount" class="font-mono text-xs leading-6 text-zinc-400"><%= @profiles.size %> visible profiles</p>
+          </div>
+        </div>
+        <div data-team-console-target="traitPanel" class="mt-4 flex flex-wrap gap-2"></div>
+      </div>
+    </div>
+
+    <div class="border border-dotted border-zinc-500 bg-black p-5">
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">Thumper team builder</p>
+          <h2 data-team-console-target="teamHeading" class="mt-2 font-mono text-2xl font-black text-white">Suggested teams of 5</h2>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="font-mono text-[10px] font-black uppercase tracking-[0.22em] text-zinc-400" for="team_size">size</label>
+          <select id="team_size" data-action="team-console#changeTeamSize" data-team-console-target="teamSize" class="border border-dotted border-zinc-500 bg-zinc-950 px-3 py-2 font-mono text-xs text-white">
+            <% (2..10).each do |size| %>
+              <option value="<%= size %>" <%= "selected" if size == 5 %>><%= size %></option>
+            <% end %>
+          </select>
+        </div>
+      </div>
+      <p class="mt-2 font-mono text-xs leading-6 text-zinc-400">Teams are rebuilt from the currently visible profile count. The algorithm starts with exec/leader seeds when possible, then spreads different strengths and domains.</p>
+      <div data-team-console-target="teamPanel" class="mt-4 grid max-h-[560px] gap-3 overflow-auto pr-1 md:grid-cols-2"></div>
+    </div>
+  </div>
+
+  <section class="lg:col-span-2 mt-0 border border-dotted border-zinc-500 bg-black p-5">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">profile stream</p>
+        <h2 class="mt-2 font-mono text-2xl font-black text-white">Team list</h2>
+      </div>
+      <div class="grid gap-3 sm:min-w-[320px]">
+        <label class="font-mono text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500" for="team_profile_search">live name search</label>
+        <input id="team_profile_search" type="search" data-team-console-target="searchInput" data-action="input->team-console#updateSearch" placeholder="type a name, role, email, or strength" class="border border-dotted border-zinc-500 bg-zinc-950 px-4 py-3 font-mono text-xs text-white outline-none transition placeholder:text-zinc-600 focus:border-lime-300 focus:shadow-[0_0_18px_rgba(190,242,100,0.18)]">
+      </div>
+    </div>
+
+    <div class="mt-4 border border-dotted border-white/20 bg-white/[0.03] p-3 font-mono text-[11px] leading-6 text-zinc-400">
+      <p class="text-zinc-300">Strength pill border colors show Clifton domain:</p>
+      <div class="mt-2 flex flex-wrap gap-2">
+        <span class="team-domain-token border border-dotted bg-zinc-950 px-2 py-1" data-domain="executing">Executing</span>
+        <span class="team-domain-token border border-dotted bg-zinc-950 px-2 py-1" data-domain="influencing">Influencing</span>
+        <span class="team-domain-token border border-dotted bg-zinc-950 px-2 py-1" data-domain="relationship">Relationship Building</span>
+        <span class="team-domain-token border border-dotted bg-zinc-950 px-2 py-1" data-domain="strategic">Strategic Thinking</span>
+      </div>
+    </div>
+
+    <div class="mt-5 overflow-hidden border border-dotted border-white/30">
+      <div class="hidden grid-cols-[0.9fr_1fr_1.2fr_0.9fr] gap-3 border-b border-dotted border-white/30 bg-white/5 px-4 py-3 font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-400 md:grid">
+        <span>name</span><span>work lane</span><span>strength profile</span><span>status</span>
+      </div>
+      <div class="divide-y divide-dotted divide-white/20">
+        <% @profiles.each do |profile| %>
+          <% profile_statuses = [] %>
+          <% profile_statuses << "activeish" if profile.active? %>
+          <% profile_statuses << "invite_ready" if profile.invite_ready? %>
+          <% profile_statuses << "held" if profile.held? %>
+          <% search_text = [profile.display_name, profile.email, profile.role_title, profile.team_name, profile.department, profile.location, profile.reports_to_name, profile.recommended_role, profile.status_label, profile.top_strengths(5).join(" ")].compact_blank.join(" ") %>
+          <article data-team-console-target="profileRow" data-name="<%= profile.display_name %>" data-search-text="<%= search_text %>" data-role="<%= profile.recommended_role %>" data-exec="<%= profile.executive_profile? %>" data-statuses="<%= profile_statuses.join('|') %>" data-status-activeish="<%= profile.active? ? '1' : '0' %>" data-status-invite-ready="<%= profile.invite_ready? ? '1' : '0' %>" data-status-held="<%= profile.held? ? '1' : '0' %>" data-active="<%= profile.active? %>" data-invite-ready="<%= profile.invite_ready? %>" data-held="<%= profile.held? %>" data-domains="<%= profile.clifton_domains(5).join('|') %>" data-traits="<%= profile.top_strengths(5).join('|') %>" data-top-traits="<%= profile.top_strengths(4).join('|') %>" class="grid gap-3 px-4 py-4 hover:bg-zinc-900/80 md:grid-cols-[0.9fr_1fr_1.2fr_0.9fr]">
+            <div>
+              <strong class="block font-mono text-base text-white"><%= profile.display_name %></strong>
+              <span class="font-mono text-[11px] text-zinc-500"><%= profile.email.presence || "no email on import" %></span>
+            </div>
+            <div class="font-mono text-xs leading-5 text-zinc-300">
+              <p><%= profile.role_title.presence || "role pending" %></p>
+              <p class="text-zinc-500"><%= [profile.team_name, profile.department].compact_blank.join(" // ").presence || "team pending" %></p>
+              <p class="text-zinc-500"><%= [profile.location, profile.reports_to_name].compact_blank.join(" // reports to ") %></p>
+            </div>
+            <div>
+              <div class="flex flex-wrap gap-2">
+                <% profile.top_strengths(5).each_with_index do |strength, index| %>
+                  <% domain = EmployeeProfile.clifton_domain_for(strength) %>
+                  <span class="team-domain-token border border-dotted <%= domain_classes[domain] || 'border-white/30 text-zinc-200' %> bg-zinc-950 px-2 py-1 font-mono text-[11px]" data-domain="<%= domain %>"><%= index + 1 %> // <%= strength %></span>
+                <% end %>
+                <% if profile.top_strengths.blank? %>
+                  <span class="font-mono text-xs text-zinc-500">strengths pending</span>
+                <% end %>
+              </div>
+              <% if profile.all_strengths.size > 5 %>
+                <details class="mt-2 font-mono text-[11px] text-zinc-400">
+                  <summary class="cursor-pointer text-zinc-300 hover:text-white">show all <%= profile.all_strengths.size %> strengths + characteristics</summary>
+                  <p class="mt-2 leading-6"><%= profile.all_strengths.each_with_index.map { |strength, index| "#{index + 1}. #{strength}" }.join(" // ") %></p>
+                  <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                    <% profile.characteristics.each do |label, value| %>
+                      <p class="border border-dotted border-white/15 bg-black/60 p-2"><span class="text-zinc-500"><%= label %>:</span> <span class="text-zinc-200"><%= value %></span></p>
+                    <% end %>
+                  </div>
+                </details>
+              <% end %>
+            </div>
+            <div class="font-mono text-xs leading-5">
+              <p class="text-zinc-200"><%= profile.recommended_role %> / L<%= profile.admin_level %></p>
+              <p class="text-zinc-500"><%= profile.status_label %></p>
+              <% if profile.executive_profile? %>
+                <p class="mt-1 text-amber-200">exec/leader seed</p>
+              <% end %>
+            </div>
+          </article>
+        <% end %>
+        <p data-team-console-target="emptyState" hidden class="p-5 font-mono text-sm text-zinc-300">No profiles match the selected filters.</p>
+      </div>
+    </div>
+  </section>
+</section>

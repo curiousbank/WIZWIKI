@@ -1,0 +1,33 @@
+{
+  "ignored_warnings": [
+    {
+      "fingerprint": "5bf9fe52455157b54f2c37e819b5760f5f62c36b1bffbe409eb4c501a30f2267",
+      "note": "Weather event SQL is assembled from server-side BAD_WEATHER_EVENT_KEYWORDS constants and uses sanitized bound values."
+    },
+    {
+      "fingerprint": "67c90364c661951397c442d2965c571203dd45631d83a9aca0d1cf7d79727b33",
+      "note": "Trade search SQL repeats a fixed set of crm_records columns and uses sanitized keyword binds from server-side constants."
+    },
+    {
+      "fingerprint": "785658f4cadd66c729482a9d446b133b1ba5c1c73eb3949c9ae68cdc05c0891d",
+      "note": "Raw zip fallback SQL repeats a fixed crm_records column expression and uses sanitized zip binds."
+    },
+    {
+      "fingerprint": "79f2de4b8132b567f51efd27e2c773b4d487e496616ee425bd3dce7262b7e547",
+      "note": "Follow-up advisory-lock SQL interpolates only an ActiveRecord-quoted lock key assembled from server-side values."
+    },
+    {
+      "fingerprint": "a656e0f7e8a60cff525854716044eab4ce4684e11b2b53c04cd603bfed5398d2",
+      "note": "Queue sort SQL selects internal sort fragments only; current_user.id is integer-cast before interpolation."
+    },
+    {
+      "fingerprint": "c397c774c07479ab817f2bb47b03df318f63b93695da4212ff2846c9a6f2f000",
+      "note": "Priority filter SQL is an internal static CASE expression; request parameters remain separate bound values."
+    },
+    {
+      "fingerprint": "f0dbdcec4ead1d4f5f8615f25339371232735570eeb734181b8e1f442707a2be",
+      "note": "Email warmup advisory-lock SQL interpolates only an ActiveRecord-quoted lock key assembled from server-side values."
+    }
+  ],
+  "brakeman_version": "8.0.5"
+}

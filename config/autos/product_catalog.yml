@@ -1,0 +1,14 @@
+version: public-template-1
+source_of_truth: false
+description: >
+  Empty public product-catalog template. Replace this file with reviewed,
+  organization-owned products, prices, and links before enabling sales drafts.
+
+global_rules:
+  - Answer the latest direct question first.
+  - Never invent products, prices, discounts, links, delivery dates, or included items.
+  - Require operator review before sending customer-facing content.
+
+products: {}
+current_specials: {}
+process: {}

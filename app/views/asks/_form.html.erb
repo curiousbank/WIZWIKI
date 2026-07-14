@@ -1,0 +1,112 @@
+<% ask_autopilot_test = local_assigns[:ask_autopilot_test].presence %>
+<% ask_autopilot_active = ask_autopilot_test.present? && Comms::AskAutopilotTest.active?(ask_autopilot_test) %>
+<% selected_sms_writer_model = WizwikiSettings.normalize_sms_writer_model(
+  local_assigns[:ask_sms_writer_model].presence ||
+    ask_autopilot_test.to_h["sms_writer_model"].presence ||
+    @ask_sms_writer_model.presence ||
+    WizwikiSettings.default_sms_writer_model
+) %>
+
+<% if ask_autopilot_active %>
+  <div class="wizwiki-ask-dojo-scope" data-wizwiki-dojo-scope>
+    <%= form_with url: reply_ask_autopilot_test_path, scope: :ask_autopilot_test, class: "wizwiki-ask-form", data: { controller: "autos-chat", action: "turbo:submit-start->autos-chat#start turbo:submit-end->autos-chat#stop", wizwiki_ask_form: true } do |form| %>
+      <div class="wizwiki-ask-llm-row">
+        <label class="wizwiki-ask-llm-select-label">
+          <span>LLM</span>
+          <%= form.select :sms_writer_model, options_for_select(ask_sms_writer_model_options, selected_sms_writer_model), {}, class: "wizwiki-ask-llm-select", data: { wizwiki_dojo_model_source: true }, aria: { label: "Thumper SMS simulator LLM" } %>
+        </label>
+        <span><%= WizwikiSettings.sms_writer_model_label(selected_sms_writer_model) %></span>
+      </div>
+
+      <div class="wizwiki-ask-input-wrap">
+        <%= form.label :message, "reply as customer / dojo guidance", class: "wizwiki-ask-label" %>
+        <%= form.text_area :message, rows: 5, placeholder: "Type a customer SMS for SEND TEST REPLY, or a trainer note for RECURSIVE DOJO.", class: "wizwiki-ask-textarea", data: { wizwiki_prompt: true, wizwiki_dojo_guidance_source: true } %>
+      </div>
+
+      <div class="wizwiki-ask-pending hidden" data-autos-chat-target="pending">
+        <div>
+          <strong data-autos-chat-target="pendingLabel">Gathering thoughts</strong>
+          <span class="wizwiki-ask-pending-meta">
+            <span>SMS autopilot simulator</span>
+            <b class="wizwiki-ask-pending-timer" data-autos-chat-target="timer">00:00</b>
+          </span>
+        </div>
+        <div class="wizwiki-ask-progress"><span></span></div>
+      </div>
+
+      <div class="wizwiki-ask-controls wizwiki-ask-controls--autopilot" data-wizwiki-ask-controls>
+        <%= form.submit "SEND TEST REPLY", class: "wizwiki-ask-submit", data: { autos_chat_target: "submit" } %>
+        <button
+          type="submit"
+          class="wizwiki-ask-submit wizwiki-ask-submit--dojo"
+          formaction="<%= recursive_dojo_ask_autopilot_test_path %>"
+          formmethod="post"
+          data-wizwiki-dojo-submit>
+          RECURSIVE DOJO
+        </button>
+      </div>
+    <% end %>
+
+    <p class="wizwiki-voice-status" data-wizwiki-voice-status data-autos-talk-target="voiceStatus">autopilot test active // no sms sent</p>
+  </div>
+<% else %>
+  <%= form_with model: autos_question, url: ask_path, multipart: true, class: "wizwiki-ask-form", data: { controller: "autos-chat", action: "turbo:submit-start->autos-chat#start turbo:submit-end->autos-chat#stop", wizwiki_ask_form: true } do |form| %>
+    <input type="hidden" name="full_talk" value="0" data-wizwiki-full-talk-input data-autos-talk-target="fullTalkInput">
+
+    <div class="wizwiki-ask-input-wrap">
+      <%= form.label :question, "insert prompt here", class: "wizwiki-ask-label" %>
+      <%= form.text_area :question, rows: 5, placeholder: "Ask Thumper about a customer, campaign, team strength, design queue, process, playbook, or training note.", class: "wizwiki-ask-textarea", data: { wizwiki_prompt: true } %>
+    </div>
+
+    <div class="wizwiki-ask-llm-row">
+      <label class="wizwiki-ask-llm-select-label">
+        <span>LLM</span>
+        <%= form.select :sms_writer_model, options_for_select(ask_sms_writer_model_options, selected_sms_writer_model), {}, class: "wizwiki-ask-llm-select", aria: { label: "Thumper ask LLM" } %>
+      </label>
+      <span><%= WizwikiSettings.sms_writer_model_label(selected_sms_writer_model) %></span>
+    </div>
+
+    <div class="wizwiki-ask-voice-row">
+      <label class="wizwiki-ask-voice-select-label">
+        <span>voice skin</span>
+        <%= select_tag "autos_question[autos_voice]", options_for_select(Autos::Settings.tts_voice_options, Autos::Settings.alice_voice), class: "wizwiki-ask-voice-select", data: { wizwiki_voice_select: true }, aria: { label: "WIZWIKI Thumper voice skin" } %>
+      </label>
+      <button type="button" class="wizwiki-voice-test" data-wizwiki-voice-sample data-action="autos-talk#playVoiceSample">TEST</button>
+    </div>
+
+    <details class="wizwiki-ask-context">
+      <summary>optional context</summary>
+      <%= form.text_area :context, rows: 3, placeholder: "Add source, meeting, customer, urgency, or any clue that should narrow Thumper's document-aware vector search.", class: "wizwiki-ask-context-input" %>
+    </details>
+
+    <div class="wizwiki-ask-pending hidden" data-autos-chat-target="pending">
+      <div>
+        <strong>🧠 Thumper thinking</strong>
+        <span class="wizwiki-ask-pending-meta">
+          <span>Thumper von AUTOS // context queue</span>
+          <b class="wizwiki-ask-pending-timer" data-autos-chat-target="timer">00:00</b>
+        </span>
+      </div>
+      <div class="wizwiki-ask-progress"><span></span></div>
+    </div>
+
+    <div class="wizwiki-ask-controls" data-wizwiki-ask-controls data-ask-url="<%= ask_path(format: :turbo_stream) %>">
+      <button type="button" class="wizwiki-talk-toggle" data-wizwiki-full-talk-toggle data-autos-talk-target="fullTalkToggle" data-action="autos-talk#toggleFullTalk" aria-pressed="false">
+        <span data-wizwiki-full-talk-icon data-autos-talk-target="fullTalkIcon">🔇</span>
+        <span data-wizwiki-full-talk-label data-autos-talk-target="fullTalkLabel">FULL TALK OFF</span>
+      </button>
+      <button type="button" class="wizwiki-walkie" data-wizwiki-voice-button data-autos-talk-target="voiceButton" data-action="pointerdown->autos-talk#startVoice pointerup->autos-talk#stopVoice pointercancel->autos-talk#stopVoice pointerleave->autos-talk#stopVoice click->autos-talk#blockClick" aria-label="Hold to talk to Thumper">
+        <span data-wizwiki-voice-icon data-autos-talk-target="voiceIcon">📻</span>
+        <span data-wizwiki-voice-label data-autos-talk-target="voiceLabel">hold to talk</span>
+      </button>
+      <%= form.submit "ASK", class: "wizwiki-ask-submit", data: { autos_chat_target: "submit" } %>
+    </div>
+
+    <p class="wizwiki-voice-status" data-wizwiki-voice-status data-autos-talk-target="voiceStatus">walkie ready // hold to ask the Thumper von AUTOS</p>
+  <% end %>
+
+  <%= form_with url: start_ask_autopilot_test_path, method: :post, class: "wizwiki-ask-autopilot-action-form wizwiki-ask-autopilot-action-form--start", data: { turbo: false } do %>
+    <%= hidden_field_tag :sms_writer_model, selected_sms_writer_model %>
+    <%= submit_tag "START SMS SIMULATOR", class: "wizwiki-ask-submit" %>
+  <% end %>
+<% end %>

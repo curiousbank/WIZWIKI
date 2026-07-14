@@ -1,0 +1,31 @@
+<% content_for :title, "Company Access" %>
+
+<section class="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[minmax(520px,1fr)_380px] lg:items-center">
+  <div class="access-console-card relative aspect-square min-h-[380px] overflow-hidden border-2 border-dotted border-teal-600 bg-black p-6 shadow-2xl shadow-teal-950/50 sm:min-h-[520px] lg:min-h-[590px]">
+    <%= wizwiki_cloudinary_ui_image_tag "autos", fallback: "autos.png", alt: "Automation lab", class: "access-console-art pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover", cloudinary: { width: 1200, crop: :limit } %>
+    <div class="access-console-copy absolute inset-x-0 bottom-0 z-[3] p-6 sm:p-8">
+      <p class="mb-4 font-mono text-xs font-bold tracking-[0.45em] text-teal-400">CAMPAIGN CRM // AUTOMATION</p>
+      <h1 class="font-mono text-5xl font-black leading-none tracking-[-0.08em] text-white sm:text-7xl">Private work console.</h1>
+      <p class="mt-5 max-w-2xl font-mono text-sm leading-7 text-zinc-200 sm:text-base sm:leading-8">
+        Enter the company gate password first. Confirmed employees can then sign in to Campaign CRM and add records, questions, build requests, and training text.
+      </p>
+    </div>
+  </div>
+
+  <div class="access-gate-terminal relative overflow-hidden border-2 border-dotted border-teal-500 bg-[#070707] p-5 text-white shadow-2xl shadow-teal-950/40 sm:p-6">
+    <p class="font-mono text-[10px] font-black uppercase tracking-[0.32em] text-pink-300">access gate // auth</p>
+    <h2 class="mt-4 font-mono text-3xl font-black tracking-[-0.06em] text-white">Open Campaign CRM</h2>
+    <p class="mt-4 font-mono text-xs leading-6 text-zinc-300">
+      &gt; Password required before the employee login screen.
+    </p>
+
+    <%= form_with url: site_gate_path, class: "mt-7 grid gap-5" do |form| %>
+      <div class="terminal-field">
+        <%= form.label :password, "> Company password", class: "block font-mono text-xs font-black uppercase tracking-[0.22em] text-teal-300" %>
+        <%= form.password_field :password, required: true, autofocus: true, autocomplete: "current-password", class: "terminal-input mt-2 w-full border-2 border-dotted border-teal-500/80 bg-black px-4 py-4 font-mono text-lg text-pink-100 outline-none" %>
+      </div>
+
+      <%= form.submit "Run access check", class: "terminal-submit w-full cursor-pointer border-2 border-dotted border-pink-300 bg-teal-700 px-5 py-4 font-mono text-[11px] font-black uppercase tracking-[0.22em] text-white hover:bg-pink-200 hover:text-black" %>
+    <% end %>
+  </div>
+</section>

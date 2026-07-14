@@ -1,0 +1,58 @@
+<% content_for :title, "Edit User Access" %>
+
+<section class="border-2 border-dotted border-pink-500 bg-black p-6 shadow-2xl shadow-teal-950/30">
+  <p class="font-mono text-xs font-black uppercase tracking-[0.35em] text-pink-300">admin // user access</p>
+  <h1 class="mt-3 font-mono text-4xl font-black tracking-[-0.06em] text-white">Edit User</h1>
+  <p class="mt-4 max-w-3xl font-mono text-sm leading-7 text-zinc-300">
+    Update role and admin access for <span class="text-pink-200"><%= @membership.user.display_name %></span>.
+  </p>
+</section>
+
+<section class="mt-6 grid gap-5 lg:grid-cols-[1fr_1.3fr]">
+  <aside class="border border-dotted border-white/40 bg-[#111] p-5 font-mono text-xs text-zinc-300">
+    <p class="text-[10px] font-black uppercase tracking-[0.35em] text-teal-500">account</p>
+    <dl class="mt-4 grid gap-3">
+      <div>
+        <dt class="text-zinc-500">Name</dt>
+        <dd class="mt-1 text-lg font-black text-white"><%= @membership.user.display_name %></dd>
+      </div>
+      <div>
+        <dt class="text-zinc-500">Email</dt>
+        <dd class="mt-1 text-white"><%= @membership.user.email_address %></dd>
+      </div>
+      <div>
+        <dt class="text-zinc-500">Current Access</dt>
+        <dd class="mt-1 text-pink-200"><%= @membership.role.upcase %> // ADMIN <%= @membership.admin? ? "YES" : "NO" %></dd>
+      </div>
+    </dl>
+  </aside>
+
+  <div class="border border-dotted border-pink-400 bg-[#090909] p-5">
+    <%= form_with model: @membership, url: approve_user_path(@membership), method: :patch, class: "grid gap-5" do |form| %>
+      <div>
+        <%= form.label :role, "Role", class: "font-mono text-[10px] font-black uppercase tracking-[0.35em] text-teal-400" %>
+        <%= form.select :role, Membership::ROLES.map { |role| [role.upcase, role] }, {}, class: "mt-2 w-full border border-dotted border-white/40 bg-black px-4 py-3 font-mono text-sm text-white" %>
+        <p class="mt-2 font-mono text-xs text-zinc-500">Design creates visual work. Develop can access BUILD. Produce handles production work.</p>
+      </div>
+
+      <label class="flex items-center gap-3 border border-dotted border-white/30 bg-white/5 p-4 font-mono text-sm text-white">
+        <%= form.check_box :admin, class: "h-5 w-5 accent-pink-500" %>
+        <span>
+          <strong class="block text-pink-200">Admin access</strong>
+          <span class="text-xs text-zinc-400">Admins can see APPROVE and update user access.</span>
+        </span>
+      </label>
+
+      <div class="flex flex-wrap gap-3">
+        <%= form.submit "SAVE ACCESS", class: "cursor-pointer border border-dotted border-pink-400 bg-pink-700 px-5 py-3 font-mono text-[11px] font-black text-white hover:bg-white hover:text-black" %>
+        <%= link_to "BACK TO APPROVE", approve_path(anchor: "users"), class: "border border-dotted border-white/50 px-5 py-3 font-mono text-[11px] font-black text-white hover:bg-teal-700" %>
+      </div>
+    <% end %>
+
+    <div class="mt-5 border border-dotted border-cyan-300/50 bg-cyan-950/20 p-4">
+      <p class="font-mono text-[10px] font-black uppercase tracking-[0.25em] text-cyan-200">password access</p>
+      <p class="mt-2 font-mono text-xs leading-5 text-zinc-400">Send a secure reset link. The app never displays or emails the current password.</p>
+      <%= button_to "SEND PASSWORD RESET", send_password_reset_approve_user_path(@membership), method: :post, class: "mt-3 cursor-pointer border border-dotted border-cyan-300 bg-cyan-950 px-5 py-3 font-mono text-[11px] font-black text-cyan-100 hover:bg-cyan-300 hover:text-black", data: { turbo_confirm: "Send a password reset email to #{@membership.user.email_address}?" } %>
+    </div>
+  </div>
+</section>

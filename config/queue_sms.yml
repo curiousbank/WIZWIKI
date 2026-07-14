@@ -1,0 +1,7 @@
+production:
+  dispatchers: []
+  workers:
+    - queues: "sms"
+      threads: 1
+      processes: 1
+      polling_interval: 0.25

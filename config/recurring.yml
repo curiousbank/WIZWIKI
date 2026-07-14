@@ -1,0 +1,46 @@
+# examples:
+#   periodic_cleanup:
+#     class: CleanSoftDeletedRecordsJob
+#     queue: background
+#     args: [ 1000, { batch_size: 500 } ]
+#     schedule: every hour
+#   periodic_cleanup_with_command:
+#     command: "SoftDeletedRecord.due.delete_all"
+#     priority: 2
+#     schedule: at 5am every day
+
+production:
+  sync_hubspot_report_tickets:
+    class: "Hubspot::TicketSyncJob"
+    schedule: every hour at minute 22
+  sync_hubspot_company_zip_store:
+    class: "Hubspot::CompanyAddressSyncJob"
+    schedule: "52 */2 * * *"
+  sync_weather_lead_signals:
+    class: "Weather::LeadSignalSyncJob"
+    schedule: "7 0-22/2 * * *"
+  calibrate_weather_predictions:
+    class: "Weather::PredictionCalibrationJob"
+    schedule: "47 * * * *"
+  refresh_owner_queue_comms:
+    class: "Comms::OwnerQueueRefreshJob"
+    schedule: "37 1-23/2 * * *"
+  reconcile_comms_orders:
+    class: "Comms::OrderReconciliationJob"
+    schedule: at 12:05am every day
+  comms_follow_up_sweep:
+    class: "Comms::FollowUpJob"
+    schedule: "* * * * *"
+  comms_email_draft_warmup:
+    class: "Comms::EmailDraftWarmupJob"
+    priority: 50
+    schedule: "*/5 * * * *"
+  comms_inbound_sms_recovery_sweep:
+    class: "Comms::InboundSmsRecoverySweepJob"
+    schedule: every 2 minutes
+  comms_autopilot_learning:
+    class: "Comms::AutopilotLearningJob"
+    schedule: "*/10 * * * *"
+  clear_solid_queue_finished_jobs:
+    command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
+    schedule: every hour at minute 12

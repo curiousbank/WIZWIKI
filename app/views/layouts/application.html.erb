@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "Campaign CRM" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Campaign CRM">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <% importmap_nonce = request&.content_security_policy_nonce %>
+    <%= tag.script Rails.application.importmap.to_json(resolver: self).html_safe,
+      type: "importmap",
+      "data-turbo-track": "reload",
+      "data-cfasync": "false",
+      nonce: importmap_nonce %>
+    <%= javascript_importmap_module_preload_tags %>
+    <%= tag.script %(import "application").html_safe,
+      type: "module",
+      "data-cfasync": "false",
+      nonce: importmap_nonce %>
+  </head>
+
+  <body class="min-h-screen bg-[#050505] text-zinc-100">
+    <header class="border-b-2 border-dotted border-teal-700 bg-black/95">
+      <nav class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-4">
+        <% brand_home_path = authenticated? ? dashboard_path : root_path %>
+        <%= link_to brand_home_path, class: "group" do %>
+          <span class="block font-mono text-xs font-black tracking-[0.38em] text-teal-500">CAMPAIGN CRM</span>
+          <span class="font-mono text-2xl font-black tracking-[-0.06em] text-white group-hover:text-teal-400">OPERATIONS</span>
+        <% end %>
+
+<% if authenticated? %>
+  <% nav_membership = current_user.primary_membership %>
+<% opportunity_icons = {
+  "report" => "📄",
+  "design" => "🎨"
+} %>
+  <div class="flex flex-1 flex-wrap items-center justify-end gap-3 text-sm">
+    <details class="main-menu-shell group relative z-[5000]" onmouseleave="this.open = false">
+      <summary class="opportunities-trigger-glow cursor-pointer list-none border border-dotted border-white/50 px-4 py-2 font-mono text-[11px] font-black text-white hover:bg-zinc-800">
+        📊 MAIN MENU
+      </summary>
+      <div class="main-menu-overlay absolute right-0 z-[5001] mt-3 grid min-w-72 gap-2 border border-dotted border-teal-600 bg-black p-3 shadow-2xl shadow-teal-950/50">
+        <%= link_to "📇 LEAD GEN", comms_command_path, class: "opportunities-menu-link" %>
+        <%= link_to "#{opportunity_icons["design"]} DESIGN QUEUE", design_reports_path, class: "opportunities-menu-link" %>
+        <%= link_to "🗺️ DATA MAP", data_map_path, class: "opportunities-menu-link" %>
+        <%= link_to "⛈️ WEATHER BRAIN", weather_path, class: "opportunities-menu-link" %>
+        <%= link_to "👤 EDIT PROFILE", edit_profile_path, class: "opportunities-menu-link" %>
+      </div>
+    </details>
+    <%= link_to "ASK", ask_path, class: "border border-dotted border-white/50 px-4 py-2 font-mono text-[11px] font-black text-white hover:bg-teal-700" %>
+    <%= link_to "TRAIN", train_path, class: "border border-dotted border-white/50 px-4 py-2 font-mono text-[11px] font-black text-white hover:bg-teal-700" %>
+    <% if nav_membership&.can_build? %>
+      <%= link_to "BUILD", build_path, class: "border border-dotted border-white/50 px-4 py-2 font-mono text-[11px] font-black text-white hover:bg-teal-700" %>
+    <% end %>
+    <% if nav_membership&.admin? %>
+      <%= link_to "APPROVE", approve_path, class: "border border-dotted border-pink-400 px-4 py-2 font-mono text-[11px] font-black text-pink-100 hover:bg-pink-700" %>
+    <% end %>
+    <%= link_to "TEAM", team_path, class: "border border-dotted border-emerald-400/70 px-4 py-2 font-mono text-[11px] font-black text-emerald-100 hover:bg-emerald-700 hover:text-white" %>
+    <%= button_to "🚀 LOG OUT", session_path, method: :delete, form_class: "ml-auto", class: "border border-dotted border-white/80 bg-transparent px-4 py-2 font-mono text-[11px] font-black text-white hover:bg-white hover:text-black" %>
+  </div>
+<% else %>
+        <% end %>
+      </nav>
+<% if brain_power = autos_brain_power_snapshot %>
+  <div class="brain-power-strip border-t border-dotted border-teal-900/80 px-5 py-2" data-controller="brain-power" data-brain-power-url-value="<%= autos_brain_power_path(format: :json) %>" data-brain-power-interval-value="15000">
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-300">
+      <span class="text-pink-300">🧠 brain power</span>
+      <div class="brain-power-meter h-3 min-w-40 flex-1 overflow-hidden border border-dotted border-white/40 bg-black">
+        <span data-brain-power-target="bar" style="width: <%= brain_power[:percent_left] %>%"></span>
+      </div>
+      <span data-brain-power-target="remaining"><%= number_with_delimiter(brain_power[:remaining]) %> AUTOS_CRED LEFT</span>
+      <span data-brain-power-target="used" class="text-zinc-500">used <%= number_with_delimiter(brain_power[:used]) %> / <%= number_with_delimiter(brain_power[:budget]) %></span>
+      <span data-brain-power-target="status" class="<%= brain_power[:configured] ? 'text-pink-300' : 'text-teal-300' %>"><%= brain_power[:status_label] %></span>
+    </div>
+  </div>
+<% end %>
+    </header>
+
+    <main class="mx-auto max-w-7xl px-5 py-8">
+      <% if alert = flash[:alert] %>
+        <div class="mb-5 border border-dotted border-teal-500 bg-teal-950/40 px-4 py-3 font-mono text-xs text-teal-100"><%= alert %></div>
+      <% end %>
+
+      <% if notice = flash[:notice] %>
+        <div class="mb-5 border border-dotted border-white/50 bg-white/10 px-4 py-3 font-mono text-xs text-zinc-100"><%= notice %></div>
+      <% end %>
+
+      <%= yield %>
+    </main>
+  </body>
+</html>

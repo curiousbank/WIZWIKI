@@ -1,0 +1,38 @@
+<% content_for :title, "Sign In" %>
+
+<section class="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[minmax(420px,0.9fr)_minmax(360px,1fr)] lg:items-stretch">
+  <div class="access-console-card relative aspect-square min-h-[380px] overflow-hidden border-2 border-dotted border-teal-600 bg-black p-6 shadow-2xl shadow-teal-950/50 sm:min-h-[520px] lg:min-h-[590px]">
+    <%= wizwiki_cloudinary_ui_image_tag "autos", fallback: "autos.png", alt: "Automation lab", class: "access-console-art pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover", cloudinary: { width: 1200, crop: :limit } %>
+    <div class="access-console-copy absolute inset-x-0 bottom-0 z-[3] p-6 sm:p-8">
+      <p class="mb-4 font-mono text-xs font-bold tracking-[0.45em] text-teal-400">employee access // CAMPAIGN CRM</p>
+      <h1 class="font-mono text-5xl font-black leading-none tracking-[-0.08em] text-white sm:text-7xl">Crew launch console.</h1>
+      <p class="mt-5 max-w-2xl font-mono text-sm leading-7 text-zinc-200 sm:text-base sm:leading-8">
+        Clock in, grab the next play, train AUTOS, and keep campaigns moving from first idea to approved launch.
+      </p>
+    </div>
+  </div>
+
+  <div class="access-gate-terminal relative overflow-hidden border-2 border-dotted border-teal-500 bg-[#070707] p-5 text-white shadow-2xl shadow-teal-950/40 sm:p-6">
+    <p class="font-mono text-xs font-bold tracking-[0.45em] text-teal-500">secure console // CAMPAIGN CRM</p>
+    <h1 class="mt-3 font-mono text-4xl font-black tracking-[-0.06em] text-white">Console access.</h1>
+    <p class="mt-4 font-mono text-sm leading-7 text-zinc-300">Authorized team only.</p>
+
+    <%= form_with url: session_path, class: "mt-8 grid gap-5", data: { turbo: false } do |form| %>
+      <div>
+        <%= form.label :email_address, "Email", class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+        <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", placeholder: "name@company.com", value: params[:email_address], class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-4 text-white" %>
+      </div>
+
+      <div>
+        <%= form.label :password, "Password", class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+        <%= form.password_field :password, required: true, autocomplete: "current-password", maxlength: 72, class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-4 text-white" %>
+      </div>
+
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <%= form.submit "Sign in", class: "cursor-pointer border border-dotted border-white/50 bg-teal-700 px-6 py-4 font-mono text-[11px] font-black uppercase tracking-[0.18em] text-white hover:bg-white hover:text-black" %>
+        <%= link_to "Create employee account", new_registration_path, class: "font-mono text-sm font-bold text-teal-400 hover:text-white" %>
+        <%= link_to "Forgot password?", new_password_path, class: "font-mono text-sm font-bold text-zinc-300 hover:text-white" %>
+      </div>
+    <% end %>
+  </div>
+</section>

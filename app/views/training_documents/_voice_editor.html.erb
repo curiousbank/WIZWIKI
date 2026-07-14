@@ -1,0 +1,111 @@
+<% documents = Array(local_assigns[:documents]).compact %>
+<% context = local_assigns.fetch(:context, "train").to_s %>
+<% standalone = local_assigns.fetch(:standalone, false) %>
+<% editor_id = "voice-editor-#{context.parameterize.presence || 'main'}" %>
+<% fine_training_status = local_assigns.fetch(:fine_training_embedding_status, nil).to_h.with_indifferent_access %>
+<% fine_new_count = fine_training_status[:new] || documents.count { |document| document.status == "ingested" } %>
+<% fine_processing_count = fine_training_status[:processing] || documents.count { |document| document.status == "processing" } %>
+<% fine_embedded_count = fine_training_status[:embedded] || documents.count { |document| document.status == "indexed" } %>
+<% fine_embedder_model = fine_training_status[:embedder_model].presence || WizwikiSettings.report_embedder_model %>
+
+<% unless standalone %>
+  <details id="<%= editor_id %>" class="voice-editor-details">
+    <summary class="voice-editor-button">
+      <span aria-hidden="true">🗣️✍️</span>
+      <strong class="voice-editor-open-label">VOICE EDITOR</strong>
+      <strong class="voice-editor-close-label">✕ CLOSE</strong>
+      <em class="voice-editor-counts">
+        <b>new <%= number_with_delimiter(fine_new_count) %></b>
+        <b>embedded <%= number_with_delimiter(fine_embedded_count) %></b>
+      </em>
+    </summary>
+    <div class="voice-editor-backdrop" aria-hidden="true"></div>
+<% end %>
+  <section id="<%= editor_id if standalone %>" class="voice-editor-panel <%= 'voice-editor-panel--standalone' if standalone %>" role="<%= standalone ? 'region' : 'dialog' %>" aria-modal="<%= standalone ? 'false' : 'true' %>" aria-label="Thumper voice editor">
+    <header class="voice-editor-head">
+      <div>
+        <p>Thumper COPYWRITER VOICE</p>
+        <h3>Fine Training Editor</h3>
+        <% if current_user.primary_membership&.admin? %>
+          <div class="voice-editor-hero-embed">
+            <%= form_with url: enqueue_fine_training_path, method: :post, class: "voice-editor-embed-form", data: { turbo_frame: "_top" } do %>
+              <%= hidden_field_tag :memory_embedder_model, fine_embedder_model %>
+              <%= submit_tag "EMBED FINE TRAINING ONLY", class: "voice-editor-embed-submit", disabled: fine_new_count.to_i.zero? %>
+            <% end %>
+            <span>
+              new <%= number_with_delimiter(fine_new_count) %> //
+              processing <%= number_with_delimiter(fine_processing_count) %> //
+              embedded <%= number_with_delimiter(fine_embedded_count) %>
+              <% if fine_training_status[:chunks_pending].to_i.positive? || fine_training_status[:chunks_claimed].to_i.positive? || fine_training_status[:chunks_failed].to_i.positive? %>
+                // chunks pending <%= number_with_delimiter(fine_training_status[:chunks_pending].to_i) %>
+                // active <%= number_with_delimiter(fine_training_status[:chunks_claimed].to_i) %>
+                // failed <%= number_with_delimiter(fine_training_status[:chunks_failed].to_i) %>
+              <% end %>
+            </span>
+          </div>
+        <% end %>
+      </div>
+      <p>
+        Edit the source text Thumper retrieves for copy tone, sales language, report phrasing, and comms style.
+        Save changes first. Use Save + Queue when you want Alice to rebuild vectors now.
+      </p>
+    </header>
+
+    <% if documents.present? %>
+      <div class="voice-editor-grid">
+        <aside class="voice-editor-list" aria-label="Fine training documents">
+          <% documents.each_with_index do |document, index| %>
+            <a href="#<%= "#{editor_id}-doc-#{document.id}" %>" class="voice-editor-list-item <%= 'is-first' if index.zero? %>">
+              <strong><%= document.title.presence || "Untitled training doc" %></strong>
+              <span>
+                <%= document.status %>
+                <% if document.file_name.present? %>
+                  // <%= document.file_name.truncate(34) %>
+                <% elsif document.metadata.to_h["folder_path"].present? %>
+                  // <%= document.metadata.to_h["folder_path"].to_s.truncate(34) %>
+                <% end %>
+              </span>
+            </a>
+          <% end %>
+        </aside>
+
+        <div class="voice-editor-workspace">
+          <% documents.each_with_index do |document, index| %>
+            <article id="<%= "#{editor_id}-doc-#{document.id}" %>" class="voice-editor-doc-card <%= 'is-first' if index.zero? %>">
+              <div class="voice-editor-doc-meta">
+                <strong><%= index.zero? ? "Selected first" : "Fine training doc" %></strong>
+                <span>
+                  <%= document.source_type %> //
+                  <%= number_to_human_size(document.byte_size.to_i) %> //
+                  <%= document.updated_at&.strftime("%b %-d, %-I:%M %p") %>
+                </span>
+              </div>
+
+              <%= form_with model: document, url: training_document_path(document), method: :patch, class: "voice-editor-form", data: { turbo_frame: "_top" } do |form| %>
+                <label>
+                  <span>Title</span>
+                  <%= form.text_field :title, class: "voice-editor-input", autocomplete: "off" %>
+                </label>
+                <label>
+                  <span>Source text</span>
+                  <%= form.text_area :body, class: "voice-editor-textarea", spellcheck: "true" %>
+                </label>
+                <div class="voice-editor-actions">
+                  <%= form.submit "SAVE", class: "voice-editor-save" %>
+                  <%= button_tag "SAVE + QUEUE EMBEDDING", type: "submit", name: "queue_embedding", value: "1", class: "voice-editor-queue" %>
+                </div>
+              <% end %>
+            </article>
+          <% end %>
+        </div>
+      </div>
+    <% else %>
+      <div class="voice-editor-empty">
+        <strong>No fine training documents yet.</strong>
+        <span>Upload source material on /train, then open this editor to tune Thumper voice.</span>
+      </div>
+    <% end %>
+  </section>
+<% unless standalone %>
+  </details>
+<% end %>

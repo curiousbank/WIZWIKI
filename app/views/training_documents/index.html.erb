@@ -1,0 +1,392 @@
+<% content_for :title, "Train Thumper" %>
+
+<% if current_user.primary_membership&.admin? %>
+  <div
+    data-controller="adaptive-learning"
+    data-adaptive-learning-feed-url-value="<%= adaptive_learning_feed_path %>"
+    data-adaptive-learning-scan-url-value="<%= scan_adaptive_learning_path %>"
+    data-adaptive-learning-approve-url-template-value="<%= approve_adaptive_learning_path('__ID__') %>"
+    data-adaptive-learning-reject-url-template-value="<%= reject_adaptive_learning_path('__ID__') %>"
+    data-adaptive-learning-revoke-url-template-value="<%= revoke_adaptive_learning_path('__ID__') %>"
+    data-adaptive-learning-poll-ms-value="5000"
+    data-adaptive-learning-auto-open-value="true"
+  >
+    <button type="button" class="fixed bottom-5 right-5 z-[80] flex items-center gap-3 border border-lime-200 bg-black px-4 py-3 font-mono text-[10px] font-black uppercase text-lime-100 shadow-2xl hover:bg-lime-200 hover:text-black" data-action="adaptive-learning#open">
+      <span class="h-2 w-2 bg-lime-300" aria-hidden="true"></span>
+      Adaptive Learning
+      <span class="min-w-6 bg-lime-300 px-1.5 py-0.5 text-center text-black" data-adaptive-learning-target="badge"><%= @adaptive_learning_pending_count.to_i %></span>
+    </button>
+
+    <div class="fixed inset-0 z-[90] hidden" role="dialog" aria-modal="true" aria-labelledby="adaptive-learning-title" aria-hidden="true" data-adaptive-learning-target="overlay">
+      <button type="button" class="absolute inset-0 cursor-default bg-black/80 backdrop-blur-sm" aria-label="Close adaptive learning" data-action="adaptive-learning#close"></button>
+      <aside class="absolute inset-y-0 right-0 flex w-full max-w-3xl flex-col border-l border-white/20 bg-[#090909] shadow-2xl">
+        <header class="border-b border-white/15 px-4 py-4 sm:px-6">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="font-mono text-[10px] font-black uppercase text-lime-300" data-adaptive-learning-target="updated">LIVE // CONNECTING</p>
+              <h2 id="adaptive-learning-title" class="mt-1 font-mono text-xl font-black uppercase text-white sm:text-2xl">SMS Adaptive Learning</h2>
+              <p class="mt-1 font-mono text-[10px] uppercase text-zinc-500">QUARANTINE // HUMAN REVIEW // ISOLATED VECTOR MEMORY</p>
+            </div>
+            <div class="flex gap-2">
+              <button type="button" class="border border-cyan-300/60 px-3 py-2 font-mono text-[10px] font-black uppercase text-cyan-100 hover:bg-cyan-200 hover:text-black disabled:opacity-40" data-adaptive-learning-target="scanButton" data-action="adaptive-learning#scan">RUN SCAN</button>
+              <button type="button" class="h-9 w-9 border border-white/20 font-mono text-xs font-black text-white hover:bg-white hover:text-black" aria-label="Close adaptive learning" data-action="adaptive-learning#close">X</button>
+            </div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-4 border border-white/15 bg-black">
+            <div class="border-r border-white/10 p-3">
+              <p class="font-mono text-[9px] font-black uppercase text-zinc-500">Pending</p>
+              <p class="mt-1 font-mono text-xl font-black text-lime-200" data-adaptive-learning-target="pendingStat">0</p>
+            </div>
+            <div class="border-r border-white/10 p-3">
+              <p class="font-mono text-[9px] font-black uppercase text-zinc-500">Approved</p>
+              <p class="mt-1 font-mono text-xl font-black text-white" data-adaptive-learning-target="approvedStat">0</p>
+            </div>
+            <div class="border-r border-white/10 p-3">
+              <p class="font-mono text-[9px] font-black uppercase text-zinc-500">Embedded</p>
+              <p class="mt-1 font-mono text-xl font-black text-cyan-200" data-adaptive-learning-target="embeddedStat">0</p>
+            </div>
+            <div class="p-3">
+              <p class="font-mono text-[9px] font-black uppercase text-zinc-500">Flags</p>
+              <p class="mt-1 font-mono text-xl font-black text-teal-200" data-adaptive-learning-target="qualityStat">0</p>
+            </div>
+          </div>
+          <p class="mt-3 hidden border border-white/15 bg-black px-3 py-2 font-mono text-[10px]" role="status" data-adaptive-learning-target="notice"></p>
+        </header>
+
+        <div class="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_18rem]">
+          <section class="min-h-0 overflow-y-auto p-4 sm:p-6">
+            <div class="flex items-baseline justify-between gap-3">
+              <h3 class="font-mono text-xs font-black uppercase text-white">Promotion Queue</h3>
+              <span class="font-mono text-[9px] uppercase text-zinc-500">Evidence is redacted</span>
+            </div>
+            <div class="mt-3 grid gap-3" data-adaptive-learning-target="pending">
+              <p class="border border-dashed border-white/20 p-4 font-mono text-xs text-zinc-400">Loading candidates...</p>
+            </div>
+          </section>
+
+          <section class="min-h-0 overflow-y-auto border-t border-white/15 bg-black/40 p-4 lg:border-l lg:border-t-0">
+            <h3 class="font-mono text-xs font-black uppercase text-white">Realtime Output</h3>
+            <div class="mt-3" data-adaptive-learning-target="activity">
+              <p class="font-mono text-xs text-zinc-500">Waiting for learning events...</p>
+            </div>
+          </section>
+        </div>
+      </aside>
+    </div>
+  </div>
+<% end %>
+
+<section class="border-2 border-dotted border-white/25 p-4 shadow-2xl shadow-fuchsia-950/20 sm:p-6">
+  <div class="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
+    <div>
+      <p class="font-mono text-[10px] font-black uppercase tracking-[0.36em] text-fuchsia-300">Thumper training radio // midnight vector memory</p>
+      <h1 class="mt-3 font-mono text-3xl font-black uppercase tracking-[-0.04em] text-white sm:text-5xl">Tune the company brain.</h1>
+      <p class="mt-3 max-w-4xl font-mono text-sm leading-7 text-zinc-300">
+        Add clean source material, sync call text, and queue only approved memory for Thumper. Built workflows are square controls up top. Bigger manual labs live lower on the scroll.
+      </p>
+    </div>
+
+    <div class="grid gap-3">
+      <% if current_user.primary_membership&.admin? %>
+        <a href="<%= fine_training_path(memory_embedder_model: @memory_selected_embedder_model) %>" class="group grid gap-2 border-2 border-dotted border-fuchsia-200 bg-fuchsia-200 px-5 py-4 font-mono text-black shadow-xl shadow-fuchsia-950/30 hover:bg-white">
+          <span class="text-3xl leading-none" aria-hidden="true">🗣️✍️</span>
+          <span class="text-[12px] font-black uppercase tracking-[0.2em]">Voice Editor</span>
+          <span class="text-xs font-bold leading-5 text-black/75">Edit Thumper copywriter voice, save fine-training docs, and queue only changed voice memory.</span>
+        </a>
+      <% end %>
+      <div class="border border-dotted border-lime-300/50 p-4 font-mono text-xs text-lime-50">
+        <p class="font-black uppercase tracking-[0.18em] text-lime-200">
+          <%= @memory_status[:enabled] ? "Vector store live" : "Vector store needs attention" %>
+        </p>
+        <p class="mt-2 leading-6">
+          <%= @memory_status[:embedder_model] %>
+        </p>
+        <p class="mt-1 text-lime-100/75">
+          queued <%= number_with_delimiter(@memory_status[:queued]) %> //
+          embedded <%= number_with_delimiter(@memory_status[:embedded]) %> //
+          failed <%= number_with_delimiter(@memory_status[:failed]) %>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <nav class="mt-5 flex flex-wrap gap-2 font-mono text-[10px] font-black uppercase tracking-[0.16em]">
+    <% if current_user.primary_membership&.admin? %>
+      <%= link_to "Voice Editor", fine_training_path(memory_embedder_model: @memory_selected_embedder_model), class: "border border-dotted border-fuchsia-200/70 px-3 py-2 text-fuchsia-100 hover:bg-fuchsia-200 hover:text-black" %>
+    <% end %>
+    <a href="#fine-training" class="border border-dotted border-teal-300/60 px-3 py-2 text-teal-100 hover:bg-teal-300 hover:text-black">Fine Training</a>
+    <a href="#fathom-analyzer" class="border border-dotted border-fuchsia-300/60 px-3 py-2 text-fuchsia-100 hover:bg-fuchsia-300 hover:text-black">Fathom Brain</a>
+    <a href="#training-vault" class="border border-dotted border-amber-300/60 px-3 py-2 text-amber-100 hover:bg-amber-300 hover:text-black">Trusted Vault</a>
+    <a href="#design-reports" class="border border-dotted border-pink-300/60 px-3 py-2 text-pink-100 hover:bg-pink-300 hover:text-black">Overdue Report</a>
+    <a href="#playbook-analyzer" class="border border-dotted border-cyan-300/60 px-3 py-2 text-cyan-100 hover:bg-cyan-300 hover:text-black">Playbook Calls</a>
+    <a href="#computed-memory" class="border border-dotted border-emerald-300/60 px-3 py-2 text-emerald-100 hover:bg-emerald-300 hover:text-black">Search Memory</a>
+  </nav>
+</section>
+
+<section class="mt-6 grid gap-4 lg:grid-cols-3">
+  <article id="fine-training" class="border-2 border-dotted border-teal-300 p-5">
+    <div class="train-square-copy">
+      <div class="train-tile-emoji" aria-hidden="true">📚</div>
+      <p class="font-mono text-xs font-black uppercase tracking-[0.28em] text-teal-300">Fine Training Documents</p>
+      <h2 class="mt-3 font-mono text-2xl font-black uppercase tracking-[-0.04em] text-white">Give Thumper useful knowledge.</h2>
+      <p class="mt-3 font-mono text-xs leading-6 text-zinc-300">
+        Upload source folders, PDFs, transcripts, process notes, examples, and reminders that help Thumper understand WIZWIKI. Files are stored first. Admins queue embeddings after review.
+      </p>
+    </div>
+
+    <%= form_with(
+      model: @training_document,
+      url: train_path,
+      multipart: true,
+      local: true,
+      class: "mt-4 grid gap-3 self-end",
+      data: {
+        turbo: false,
+        controller: "training-upload",
+        action: "submit->training-upload#submit",
+        training_upload_max_files_value: TrainingDocumentsController::MAX_TRAINING_FILES,
+        training_upload_max_bytes_value: TrainingDocumentsController::MAX_TRAINING_TOTAL_BYTES
+      }
+    ) do |form| %>
+      <%= form.hidden_field :upload_manifest, value: "[]", data: { training_upload_target: "manifest" } %>
+      <%= form.text_field :title, placeholder: "Training title", class: "w-full border border-dotted border-white/40 bg-[#090909] px-3 py-3 font-mono text-sm text-white" %>
+      <%= form.text_area :body, rows: 4, placeholder: "Paste source text for Thumper. It will be stored now and embedded after admin approval/refresh.", class: "w-full border border-dotted border-white/40 bg-[#090909] px-3 py-3 font-mono text-sm text-white" %>
+      <div class="grid gap-2 sm:grid-cols-2">
+        <label class="grid gap-1 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-teal-100">
+          Upload files
+          <%= form.file_field :files, multiple: true, accept: ".txt,.md,.markdown,.csv,.json,.pdf,text/plain,text/markdown,text/csv,application/json,application/pdf", id: "training_document_files_upload", class: "w-full border border-dotted border-white/40 bg-[#090909] px-3 py-3 font-mono text-xs text-zinc-200", data: { training_upload_target: "fileInput", action: "change->training-upload#update" } %>
+        </label>
+        <label class="grid gap-1 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-teal-100">
+          Upload folder
+          <%= form.file_field :files, multiple: true, accept: ".txt,.md,.markdown,.csv,.json,.pdf,text/plain,text/markdown,text/csv,application/json,application/pdf", id: "training_document_folder_upload", webkitdirectory: true, class: "w-full border border-dotted border-white/40 bg-[#090909] px-3 py-3 font-mono text-xs text-zinc-200", data: { training_upload_target: "folderInput", action: "change->training-upload#update" } %>
+        </label>
+      </div>
+      <div class="training-upload-feedback" data-training-upload-target="panel" aria-live="polite">
+        <div class="training-upload-feedback-head">
+          <strong data-training-upload-target="summary">No files selected.</strong>
+          <span>Thumper STORE CHECK</span>
+        </div>
+        <div class="training-upload-meter" aria-hidden="true"><span data-training-upload-target="meter"></span></div>
+        <p data-training-upload-target="message">Choose files, choose a folder, or paste text. When you press store, this panel will stay active until SUN finishes saving the material.</p>
+      </div>
+      <p class="font-mono text-[10px] leading-5 text-teal-100/75">Nested folders are accepted, up to <%= TrainingDocumentsController::MAX_TRAINING_FILES %> files per batch. TXT, MD, CSV, JSON, and text-readable PDFs are stored. Images are skipped until OCR/vision training is enabled. Stored material waits for admin vector refresh before Thumper can retrieve it.</p>
+      <%= form.submit "STORE FINE TRAINING", class: "cursor-pointer border border-dotted border-white/50 bg-teal-700 px-4 py-4 font-mono text-[11px] font-black tracking-[0.16em] text-white hover:bg-white hover:text-black", data: { training_upload_target: "submit" } %>
+    <% end %>
+  </article>
+
+  <article id="fathom-analyzer" class="border-2 border-dotted border-fuchsia-300 p-5">
+    <div class="train-square-copy">
+      <div class="train-tile-emoji" aria-hidden="true">🧠☎️</div>
+      <p class="font-mono text-xs font-black uppercase tracking-[0.28em] text-fuchsia-300">Fathom Brain</p>
+      <h2 class="mt-3 font-mono text-2xl font-black uppercase tracking-[-0.04em] text-white">Sync recorded calls.</h2>
+      <p class="mt-3 font-mono text-xs leading-6 text-zinc-300">
+        Pull today's Fathom summaries, transcripts, action items, CRM matches, and recording links. Midnight embeddings make them searchable for /ask and market reports.
+      </p>
+    </div>
+
+    <div class="mt-4 self-end">
+      <div class="border border-dotted border-fuchsia-300/60 p-3 font-mono text-xs text-fuchsia-50">
+        <p class="font-black uppercase tracking-[0.18em]"><%= @fathom_configured ? @fathom_sync_status[:state_label] : "Fathom API not configured" %></p>
+        <p class="mt-2 leading-5 text-fuchsia-50/85"><%= @fathom_configured ? @fathom_sync_status[:detail_label] : "Add FATHOM_API_KEY on SUN before syncing calls." %></p>
+        <p class="mt-2 text-fuchsia-100/75"><%= number_with_delimiter(@fathom_call_count) %> call records // <%= @fathom_sync_status[:last_success_label] %></p>
+      </div>
+      <%= button_to "SYNC TODAY'S FATHOM CALLS", sync_fathom_path, method: :post, disabled: !@fathom_configured || @fathom_sync_status[:active], class: "mt-4 w-full cursor-pointer border border-dotted border-white/50 bg-fuchsia-700 px-4 py-4 font-mono text-[11px] font-black tracking-[0.16em] text-white hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:border-fuchsia-900 disabled:bg-zinc-800 disabled:text-zinc-500" %>
+    </div>
+  </article>
+
+  <article id="design-reports" class="border-2 border-dotted border-pink-300 p-5">
+    <div class="train-square-copy">
+      <div class="train-tile-emoji" aria-hidden="true">📊</div>
+      <p class="font-mono text-xs font-black uppercase tracking-[0.28em] text-pink-300">Overdue Report</p>
+      <h2 class="mt-3 font-mono text-2xl font-black uppercase tracking-[-0.04em] text-white">Upload the design queue.</h2>
+      <p class="mt-3 font-mono text-xs leading-6 text-zinc-300">
+        Load the overdue CSV so Thumper can answer workload, aging order, designer capacity, and queue priority questions with real operations context.
+      </p>
+    </div>
+
+    <%= form_with scope: :design_report, url: design_reports_path, multipart: true, class: "mt-4 grid gap-3 self-end" do |form| %>
+      <%= form.hidden_field :return_to, value: "train" %>
+      <%= form.text_field :title, placeholder: "Weekly overdue design queue", class: "w-full border border-dotted border-white/40 bg-[#090909] px-3 py-3 font-mono text-sm text-white" %>
+      <%= form.file_field :file, accept: ".csv,text/csv", required: true, class: "w-full border border-dotted border-white/40 bg-[#090909] px-3 py-3 font-mono text-xs text-zinc-200" %>
+      <%= form.submit "UPLOAD OVERDUE REPORT", class: "cursor-pointer border border-dotted border-white/50 bg-pink-700 px-4 py-4 font-mono text-[11px] font-black tracking-[0.16em] text-white hover:bg-white hover:text-black" %>
+    <% end %>
+  </article>
+</section>
+
+<section class="mt-6 grid gap-4 lg:grid-cols-3">
+  <article id="training-vault" class="border-2 border-dotted border-amber-300 p-5 shadow-xl shadow-amber-950/20">
+    <p class="font-mono text-xs font-black uppercase tracking-[0.28em] text-amber-200">🔐 Trusted Vault</p>
+    <h2 class="mt-3 font-mono text-2xl font-black uppercase tracking-[-0.04em] text-white">Hold source truth for approval.</h2>
+    <p class="mt-3 font-mono text-xs leading-6 text-zinc-300">
+      Use the vault for boss-approved long-term corpus data. Uploading stores encrypted source text for review; approval queues Thumper vector memory.
+    </p>
+    <%= form_with scope: :training_vault_document, url: training_vault_documents_path, multipart: true, class: "mt-4 grid gap-2" do |form| %>
+      <div class="border border-dotted border-amber-200/60 p-2 font-mono text-xs text-amber-50">
+        <p class="font-black uppercase tracking-[0.18em]"><%= @training_vault_encryption_ready ? "Vault encryption ready" : "Vault locked" %></p>
+      </div>
+      <%= form.text_field :title, placeholder: "Vault title", class: "w-full border border-dotted border-white/40 bg-[#090909] px-3 py-3 font-mono text-sm text-white" %>
+      <%= form.file_field :files, multiple: true, accept: ".txt,.md,.markdown,.csv,.json,text/plain,text/markdown,text/csv,application/json", webkitdirectory: true, class: "w-full border border-dotted border-white/40 bg-[#090909] px-3 py-3 font-mono text-xs text-zinc-200" %>
+      <%= form.submit "STORE IN TRUSTED VAULT", disabled: !@training_vault_encryption_ready, class: "cursor-pointer border border-dotted border-white/50 bg-amber-600 px-4 py-4 font-mono text-[11px] font-black tracking-[0.16em] text-white hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:border-amber-900 disabled:bg-zinc-800 disabled:text-zinc-500" %>
+    <% end %>
+  </article>
+
+  <article id="playbook-analyzer" class="border-2 border-dotted border-cyan-400 p-5 shadow-xl shadow-cyan-950/20">
+    <p class="font-mono text-xs font-black uppercase tracking-[0.28em] text-cyan-300">🎧 Call Memory // HubSpot Playbooks</p>
+    <h2 class="mt-3 font-mono text-2xl font-black uppercase tracking-[-0.04em] text-white">Load ticket-linked calls.</h2>
+    <p class="mt-3 font-mono text-xs leading-6 text-zinc-300">
+      Pull Zoom/playbook call notes associated with synced HubSpot tickets. These are useful, but the workflow is still being refined.
+    </p>
+    <div class="mt-4 border border-dotted border-cyan-300/60 p-3 font-mono text-xs text-cyan-50">
+      <p class="font-black uppercase tracking-[0.18em]"><%= @playbook_sync_status[:state_label] %></p>
+      <p class="mt-2 leading-5"><%= @playbook_sync_status[:detail_label] %></p>
+      <p class="mt-2 text-cyan-100/75"><%= number_with_delimiter(@playbook_call_count) %> playbook call records</p>
+    </div>
+    <%= button_to "SYNC HUBSPOT PLAYBOOK CALLS", sync_playbooks_path, method: :post, disabled: @playbook_sync_status[:active], class: "mt-4 w-full cursor-pointer border border-dotted border-white/50 bg-cyan-700 px-4 py-4 font-mono text-[11px] font-black tracking-[0.16em] text-white hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:border-cyan-900 disabled:bg-zinc-800 disabled:text-zinc-500" %>
+  </article>
+
+  <article id="computed-memory" class="border-2 border-dotted border-emerald-400 p-5 shadow-xl shadow-emerald-950/20">
+    <p class="font-mono text-xs font-black uppercase tracking-[0.28em] text-emerald-300">🧬 Searchable Memory // Qwen Embeddings</p>
+    <h2 class="mt-3 font-mono text-2xl font-black uppercase tracking-[-0.04em] text-white">Make approved data searchable.</h2>
+    <p class="mt-3 font-mono text-xs leading-6 text-zinc-300">
+      Daily syncs queue new and changed data automatically. Use this only when manual embedding refresh is needed: backfills, failed chunks, source cleanup, or testing a deeper embedder.
+    </p>
+    <div class="mt-4 border border-dotted border-emerald-300/60 p-3 font-mono text-xs text-emerald-50">
+      <p class="font-black uppercase tracking-[0.18em]"><%= @memory_status[:enabled] ? "Ready" : "Needs setup" %></p>
+      <p class="mt-2 leading-5"><%= @memory_status[:embedder_model] %></p>
+      <p class="mt-2 text-emerald-100/75">queued <%= number_with_delimiter(@memory_status[:queued]) %> // failed <%= number_with_delimiter(@memory_status[:failed]) %></p>
+    </div>
+    <% if current_user.primary_membership&.admin? %>
+      <%= form_with url: enqueue_memory_path, method: :post, class: "mt-4 grid gap-3" do %>
+        <label for="memory_embedder_model" class="grid gap-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-emerald-100">
+          Manual refresh embedder
+          <%= select_tag :memory_embedder_model, options_for_select(@memory_embedder_model_options, @memory_selected_embedder_model), id: "memory_embedder_model", class: "w-full border border-dotted border-white/40 bg-[#090909] px-3 py-3 font-mono text-xs text-white" %>
+        </label>
+        <p class="font-mono text-[10px] leading-5 text-emerald-100/75">
+          8B Q4 is the current default for Thumper /ask and report retrieval. 4B remains available as a faster balanced fallback.
+        </p>
+        <%= submit_tag "QUEUE MANUAL EMBEDDING REFRESH", class: "w-full cursor-pointer border border-dotted border-white/50 bg-emerald-700 px-4 py-4 font-mono text-[11px] font-black tracking-[0.16em] text-white hover:bg-white hover:text-black" %>
+      <% end %>
+    <% else %>
+      <p class="mt-4 border border-dotted border-emerald-300/40 p-3 font-mono text-xs leading-6 text-emerald-50/80">
+        Stored training material waits here until an admin queues Thumper vector memory.
+      </p>
+    <% end %>
+  </article>
+
+</section>
+
+<section class="mt-6 border-2 border-dotted border-white/20 p-5">
+  <p class="font-mono text-xs font-black uppercase tracking-[0.28em] text-white/70">Lower scroll // review shelves</p>
+  <h2 class="mt-3 font-mono text-2xl font-black uppercase tracking-[-0.04em] text-white">Recent data, only when you need it.</h2>
+
+  <div class="mt-5 grid gap-4 lg:grid-cols-2">
+    <details class="border border-dotted border-fuchsia-300/40 p-4">
+      <summary class="cursor-pointer font-mono text-xs font-black uppercase tracking-[0.2em] text-fuchsia-100">Recent Fathom Brain calls</summary>
+      <div class="mt-4 grid gap-3">
+        <% @recent_fathom_calls.each do |call| %>
+          <article class="border border-dotted border-fuchsia-300/30 p-3">
+            <p class="font-mono text-[10px] font-black uppercase tracking-[0.16em] text-fuchsia-300">
+              <%= call.recording_start_time&.strftime("%b %-d, %-I:%M %p") || "date unknown" %>
+              <% if call.recorded_by_name.present? %>
+                // <%= call.recorded_by_name.truncate(34) %>
+              <% end %>
+            </p>
+            <h3 class="mt-2 font-black text-white"><%= call.title.presence || call.meeting_title.presence || "Fathom call #{call.recording_id}" %></h3>
+            <p class="mt-2 text-sm leading-6 text-zinc-400"><%= call.compact_context(max_chars: 190) %></p>
+            <% if call.share_url.present? || call.url.present? %>
+              <%= link_to "Open recording", call.share_url.presence || call.url, target: "_blank", rel: "noopener", class: "mt-3 inline-block border border-dotted border-fuchsia-200/70 px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-fuchsia-100 hover:bg-white hover:text-black" %>
+            <% end %>
+          </article>
+        <% end %>
+        <% if @recent_fathom_calls.blank? %>
+          <p class="border border-dotted border-fuchsia-300/30 p-3 text-zinc-300">No Fathom calls loaded yet.</p>
+        <% end %>
+      </div>
+    </details>
+
+    <details class="border border-dotted border-amber-300/40 p-4">
+      <summary class="cursor-pointer font-mono text-xs font-black uppercase tracking-[0.2em] text-amber-100">Trusted Vault review queue</summary>
+      <div class="mt-4 grid gap-3">
+        <% @recent_training_vault_documents.each do |document| %>
+          <article class="border border-dotted border-amber-300/30 p-3">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p class="font-mono text-[10px] font-black uppercase tracking-[0.16em] text-amber-200">
+                  <%= document.status %> // <%= document.source_type.humanize %>
+                </p>
+                <h3 class="mt-2 font-black text-white"><%= document.title %></h3>
+              </div>
+              <p class="font-mono text-xs text-zinc-400"><%= number_to_human_size(document.byte_size) %></p>
+            </div>
+            <p class="mt-2 text-sm leading-6 text-zinc-400"><%= document.body.to_s.squish.truncate(150) %></p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <% if current_user.primary_membership&.admin? && (document.status == "review" || document.status == "approved") %>
+                <%= button_to "APPROVE + QUEUE", approve_training_vault_document_path(document), method: :post, class: "cursor-pointer border border-dotted border-amber-200/70 bg-amber-700 px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-white hover:bg-white hover:text-black" %>
+              <% end %>
+              <% if current_user.primary_membership&.admin? %>
+                <%= button_to "ARCHIVE", archive_training_vault_document_path(document), method: :patch, class: "cursor-pointer border border-dotted border-white/30 bg-zinc-900 px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-zinc-200 hover:bg-white hover:text-black" %>
+              <% end %>
+            </div>
+          </article>
+        <% end %>
+        <% if @recent_training_vault_documents.blank? %>
+          <p class="border border-dotted border-amber-300/30 p-3 text-zinc-300">No trusted corpus files waiting.</p>
+        <% end %>
+      </div>
+    </details>
+
+    <details class="border border-dotted border-cyan-300/40 p-4">
+      <summary class="cursor-pointer font-mono text-xs font-black uppercase tracking-[0.2em] text-cyan-100">Recent HubSpot playbook calls</summary>
+      <div class="mt-4 grid gap-3">
+        <% @recent_playbook_calls.each do |call| %>
+          <article class="border border-dotted border-cyan-300/30 p-3">
+            <p class="font-mono text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">
+              <%= call.occurred_at&.strftime("%b %-d, %-I:%M %p") || "date unknown" %>
+              <% if call.crm_record.present? %>
+                // <%= call.crm_record.name.truncate(42) %>
+              <% end %>
+            </p>
+            <h3 class="mt-2 font-black text-white"><%= call.title.presence || "HubSpot playbook call #{call.hubspot_call_id}" %></h3>
+            <p class="mt-2 text-sm leading-6 text-zinc-400"><%= call.compact_context(max_chars: 180) %></p>
+          </article>
+        <% end %>
+        <% if @recent_playbook_calls.blank? %>
+          <p class="border border-dotted border-cyan-300/30 p-3 text-zinc-300">No playbook calls loaded yet.</p>
+        <% end %>
+      </div>
+    </details>
+
+    <details class="border border-dotted border-teal-300/40 p-4">
+      <summary class="cursor-pointer font-mono text-xs font-black uppercase tracking-[0.2em] text-teal-100">
+        Fine training documents A-Z // showing <%= @recent_training_documents.size %> of <%= @training_document_shelf_total.to_i %>
+      </summary>
+      <div class="mt-4 grid gap-3">
+        <% @recent_training_documents.each do |document| %>
+          <% uploader_name = document.user&.display_name.to_s.split(/\s+/).first.presence || "Unknown" %>
+          <% file_label = document.file_name.presence || document.title %>
+          <% folder_path = document.metadata.to_h["folder_path"].presence %>
+          <article class="border border-dotted border-teal-300/30 p-3">
+            <p class="font-mono text-[10px] font-black uppercase tracking-[0.16em] text-teal-300">
+              <%= document.status %> // <%= document.source_type.humanize %> // uploaded by <%= uploader_name %>
+            </p>
+            <h3 class="mt-2 font-black text-white">
+              <span class="font-mono text-[10px] uppercase tracking-[0.16em] text-teal-200"><%= uploader_name %> //</span>
+              <%= file_label %>
+            </h3>
+            <% if folder_path.present? %>
+              <p class="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-teal-100/70">Folder // <%= folder_path %></p>
+            <% end %>
+            <% if document.file_name.present? && document.title.present? && document.title != document.file_name %>
+              <p class="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-teal-100/70">Title // <%= document.title %></p>
+            <% end %>
+            <p class="mt-2 text-sm text-zinc-400"><%= number_to_human_size(document.byte_size) %></p>
+          </article>
+        <% end %>
+        <% if @recent_training_documents.blank? %>
+          <p class="border border-dotted border-teal-300/30 p-3 text-zinc-300">No fine training documents yet.</p>
+        <% end %>
+      </div>
+    </details>
+  </div>
+</section>

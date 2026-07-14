@@ -1,0 +1,1796 @@
+<% content_for :title, "LEAD GEN" %>
+<% comms_close_overlay_js = "event.preventDefault();event.stopPropagation();const details=this.closest('details');if(details){details.open=false;}const url=new URL(window.location.href);url.searchParams.delete('open_sms_stage');url.searchParams.delete('open_email_stage');window.history.replaceState(window.history.state,'',url.pathname+url.search+url.hash);return false;" %>
+<% comms_confirm_onsubmit_js = "const s=event&&event.submitter;const clear=()=>{delete this.dataset.turboConfirm;if(s&&s.dataset){delete s.dataset.turboConfirm;}};const m=(s&&(s.dataset.commsConfirmMessage||s.dataset.turboConfirm))||this.dataset.commsConfirmMessage||this.dataset.turboConfirm||'Continue?';if(this.dataset.commsConfirmed==='true'){clear();delete this.dataset.commsConfirmed;return true;}if(confirm(m)){this.dataset.commsConfirmed='true';clear();return true;}return false;" %>
+<% comms_native_confirm_js = ->(message) { "const clear=()=>{if(this.dataset){delete this.dataset.turboConfirm;}if(this.form&&this.form.dataset){delete this.form.dataset.turboConfirm;}};if(this.form&&this.form.dataset.commsConfirmed==='true'){clear();return true;}if(confirm(#{message.to_json})){if(this.form){this.form.dataset.commsConfirmed='true';}clear();return true;}return false;" } %>
+<% comms_overlay_close_path = comms_command_path(q: @comms_query.presence, status: @comms_status_filter.presence, page: @comms_page.presence) %>
+<% email_follow_up = @follow_up_settings.to_h["email"].to_h %>
+<% raw_email_follow_up_enabled = ActiveModel::Type::Boolean.new.cast(email_follow_up["enabled"]) %>
+<% email_follow_up_preset = email_follow_up["preset"].presence || "normal" %>
+<% raw_email_follow_up_cadence = email_follow_up["cadence"].presence || (raw_email_follow_up_enabled ? "weekly" : "off") %>
+<% email_follow_up_enabled = raw_email_follow_up_enabled && email_follow_up_preset != "off" && raw_email_follow_up_cadence != "off" %>
+<% email_follow_up_cadence = email_follow_up_enabled ? (email_follow_up_preset == "monthly" ? "monthly" : "weekly") : "off" %>
+<% email_follow_up_preset_choice = email_follow_up_enabled ? email_follow_up_preset : "off" %>
+<% email_follow_up_mode = email_follow_up_enabled ? (email_follow_up["schedule_mode"].presence || "preset") : "preset" %>
+<% email_follow_up_plan = email_follow_up_enabled ? (email_follow_up_mode == "custom" ? (email_follow_up["daily_plan"].to_h.presence || comms_email_follow_up_day_plan(email_follow_up_preset)) : comms_email_follow_up_day_plan(email_follow_up_preset)) : comms_email_follow_up_day_plan("off") %>
+<% email_follow_up_preset_plans = comms_email_follow_up_preset_day_plans %>
+<% email_follow_up_week_options = comms_email_follow_up_monthly_week_options %>
+<% email_follow_up_selected_weeks = Array(email_follow_up["selected_weeks"]).map(&:to_s) %>
+<% email_follow_up_selected_weeks = email_follow_up_week_options.map { |week| week[:key] } if email_follow_up_preset_choice == "monthly" && email_follow_up_selected_weeks.blank? %>
+<% run_all_visible_count = @run_all_visible_eligible_count.to_i %>
+<% copilot_visible_count = @copilot_visible_eligible_count.to_i %>
+<% csv_lane_purge = @comms_status_filter.to_s.start_with?("csv_import:") %>
+<% remove_all_visible_count = (@purge_eligible_count || @remove_all_visible_eligible_count).to_i %>
+<% claim_visible_count = @claim_visible_eligible_count.to_i %>
+<% bulk_source = @bulk_autopilot_status.to_h["source"].to_h.presence || @bulk_copilot_status.to_h["source"].to_h %>
+<% batch_template_settings = @batch_template_settings.to_h.presence || comms_batch_template_settings %>
+<% sms_language_settings = @sms_language_settings.to_h.presence || comms_sms_language_settings %>
+<% sms_language_enabled = ActiveModel::Type::Boolean.new.cast(sms_language_settings["enabled"]) %>
+<% sms_batch_templates = Array(batch_template_settings.dig("templates", "sms")) %>
+<% email_batch_templates = Array(batch_template_settings.dig("templates", "email")) %>
+<% selected_sms_batch_template_id = batch_template_settings["selected_sms_template_id"].to_s %>
+<% selected_email_batch_template_id = batch_template_settings["selected_email_template_id"].to_s %>
+<% active_sms_batch_template = comms_batch_template_active("sms").to_h %>
+<% active_email_batch_template = comms_batch_template_active("email").to_h %>
+<% full_auto_static_note = active_sms_batch_template.present? ? " Static SMS template \"#{active_sms_batch_template["title"]}\" is ON, so FULL AUTO will send that rendered copy instead of dynamic first-copy for this batch." : " Static SMS templates are OFF; dynamic Thumper autopilot will draft normally." %>
+<% copilot_static_note = active_sms_batch_template.present? ? " Static SMS template \"#{active_sms_batch_template["title"]}\" is ON, so COPILOT will place that rendered copy into NEXT TEXT for approval." : " Static SMS templates are OFF; dynamic Thumper copilot will draft normally." %>
+<% run_all_sms_writer_model = WizwikiSettings.normalize_sms_writer_model(params[:sms_writer_model].presence || bulk_source["sms_writer_model"].presence || WizwikiSettings.default_sms_writer_model) %>
+<% run_all_launch_cadence = normalize_run_all_cadence(params[:run_all_cadence].presence || bulk_source["launch_cadence"].presence) %>
+<% run_all_launch_cadence_label = comms_run_all_cadence_label(run_all_launch_cadence) %>
+<% run_all_page_limit = @comms_page_size.to_i.positive? ? @comms_page_size.to_i : 100 %>
+<% comms_runtime_toggle_options = [["LOCAL", "qwen3:8b"], ["WARP", "nvidia:warp"], ["NEMOTRON", "nvidia:nemotron"]] %>
+<% comms_runtime_actual_model = ->(runtime) do
+  runtime.start_with?("nvidia:") ? WizwikiSettings.sms_writer_cloud_model(runtime).to_s : runtime
+end %>
+<% comms_runtime_model_label = ->(runtime) do
+  actual_model = comms_runtime_actual_model.call(runtime)
+  case actual_model
+  when "qwen3:8b" then "Qwen 3 8B"
+  when "qwen3:30b" then "Qwen 3 30B"
+  when "nvidia/nemotron-3-nano-30b-a3b" then "Nemotron 3 Nano 30B"
+  when "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning" then "Nemotron 3 Nano Omni"
+  else actual_model.sub(/\Anvidia\//, "").tr("-_", " ").squish.titleize.presence || "Not configured"
+  end
+end %>
+<% comms_runtime_configured = ->(runtime) do
+  !runtime.start_with?("nvidia:") || WizwikiSettings.sms_writer_cloud_configured?(runtime)
+end %>
+<% comms_runtime_value = ->(model) do
+  normalized = WizwikiSettings.normalize_sms_writer_model(model)
+  %w[nvidia:warp nvidia:nemotron].include?(normalized) ? normalized : "qwen3:8b"
+end %>
+<% run_all_disabled = @stages.blank? || !@twilio_status[:configured] || @run_all_blocked_by_visible_dnc %>
+<% copilot_disabled = @stages.blank? %>
+<% claim_visible_disabled = claim_visible_count.zero? %>
+<% claim_visible_confirm = claim_visible_disabled ? "No unclaimed visible call blocks are available to claim on this page." : "Claim all #{claim_visible_count} call block#{'s' unless claim_visible_count == 1} on this page? They will be claimed for you and moved to Claimed by me." %>
+<% run_all_confirm = @run_all_blocked_by_visible_dnc ? "A visible call block is marked DO NOT CONTACT. Filter or hide opt-outs before using FULL AUTO." : "Start FULL AUTO for #{run_all_visible_count} eligible visible call block#{'s' unless run_all_visible_count == 1} on page #{@comms_page} using #{WizwikiSettings.sms_writer_model_label(run_all_sms_writer_model)} at the selected pace? Only the currently visible page is snapshotted, up to #{run_all_page_limit} visible rows. The run keeps fixed call block IDs even if the board later reflows. After launch, each block listens individually; rerun FULL AUTO only to pick up new or autopilot-off blocks. Link-sent, AM support, hold, hidden, complete, opt-out, already-listening, and no-phone blocks are skipped.#{full_auto_static_note}" %>
+<% copilot_confirm = copilot_visible_count.zero? ? "COPILOT will re-check this visible page for draftable call blocks at the selected pace. Opt-outs, complete blocks, autopilot-running blocks, already-drafting blocks, and no-phone blocks are skipped. If none are eligible, no drafts are queued. No SMS will be sent.#{copilot_static_note}" : "Queue COPILOT drafts for #{copilot_visible_count} eligible visible call block#{'s' unless copilot_visible_count == 1} on page #{@comms_page} using #{WizwikiSettings.sms_writer_model_label(run_all_sms_writer_model)} at the selected pace? COPILOT snapshots fixed call block IDs from this visible page, only writes NEXT TEXT drafts for human approval, and will not send SMS.#{copilot_static_note}" %>
+<% remove_all_confirm = if csv_lane_purge
+  "PURGE all #{pluralize(remove_all_visible_count, 'manual CSV WIZWIKI COMMS block')} in this CSV status? Any active CSV loader for this status will be canceled so blocks stop reappearing. Owner Queue and Storm Watch source blocks are protected and will be skipped. Related manual COMMS records are deleted only when no longer used. This cannot be undone."
+elsif @comms_status_filter.to_s == "claimed_by_me"
+  "PURGE #{pluralize(remove_all_visible_count, 'call block')} from your Claimed by me page? Manual/CSV blocks on this visible page will be deleted. Storm Watch, Owner Queue, and other source-managed blocks will be released from your queue instead of deleting source data. Off-screen blocks on other pages will stay."
+else
+  "PURGE #{pluralize(remove_all_visible_count, 'manual/CSV WIZWIKI COMMS block')} on this visible page? Owner Queue and Storm Watch source blocks are protected and will be skipped. Off-screen blocks in other lanes/pages will stay. Related manual COMMS records are deleted only when no longer used. This cannot be undone."
+end %>
+<% bulk_status = @bulk_autopilot_status.to_h %>
+<% copilot_bulk_status = @bulk_copilot_status.to_h %>
+<% csv_import_status = @csv_import_status.to_h %>
+<% csv_import_state = csv_import_status["state"].to_s %>
+<% csv_import_active = csv_import_state.in?(%w[queued running]) %>
+<% csv_import_rows = csv_import_status["rows"].to_i %>
+<% csv_import_processed = csv_import_status["processed"].to_i %>
+<% csv_import_percent = csv_import_rows.positive? ? [[(csv_import_processed.to_f / csv_import_rows) * 100, 100].min, 0].max : (csv_import_active ? 12 : 100) %>
+<% claim_report_dialog = flash.delete(:comms_claim_report).to_s %>
+<% if claim_report_dialog.present? %>
+  <script>
+    (() => {
+      const message = <%= claim_report_dialog.to_json.html_safe %>;
+      const showReport = () => {
+        const key = `claim-report:${message}`;
+        if (window.__wizwikiCommsLastClaimReport === key) return;
+        window.__wizwikiCommsLastClaimReport = key;
+        window.alert(message);
+      };
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", showReport, { once: true });
+      } else {
+        window.setTimeout(showReport, 0);
+      }
+    })();
+  </script>
+<% end %>
+<% if csv_import_status.present? %>
+  <div class="comms-command-csv-import-backdrop" aria-hidden="true"></div>
+  <section class="comms-command-csv-import-dialog" role="dialog" aria-modal="true" aria-label="CSV import progress">
+    <p class="comms-command-kicker">CSV loader</p>
+    <header class="comms-command-csv-import-head">
+      <div>
+        <h2><%= (csv_import_status["title"].presence || "CSV call blocks").to_s.truncate(72) %></h2>
+        <span><%= csv_import_state.presence || "queued" %> <%= "// #{csv_import_status["filename"].to_s.truncate(42)}" if csv_import_status["filename"].present? %></span>
+      </div>
+      <% unless csv_import_active %>
+        <%= link_to "OK", comms_command_path(status: csv_import_status["status_key"].presence || @comms_status_filter, page: 1), class: "comms-command-csv-import-close" %>
+      <% end %>
+    </header>
+    <div class="comms-command-csv-import-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<%= csv_import_percent.round %>">
+      <span style="width:<%= csv_import_percent.round(1) %>%"></span>
+    </div>
+    <div class="comms-command-csv-import-stats">
+      <b><%= number_with_delimiter(csv_import_processed) %>/<%= csv_import_rows.positive? ? number_with_delimiter(csv_import_rows) : "..." %></b>
+      <span>created <%= number_with_delimiter(csv_import_status["created"].to_i) %></span>
+      <span>updated <%= number_with_delimiter(csv_import_status["updated"].to_i) %></span>
+      <span>skipped <%= number_with_delimiter(csv_import_status["skipped"].to_i) %></span>
+      <% if ActiveModel::Type::Boolean.new.cast(csv_import_status["claim_by_current_user"]) %>
+        <span>claimed <%= csv_import_status["claimed_by"].presence || "to you" %></span>
+      <% end %>
+      <span>dupes <%= number_with_delimiter(csv_import_status["duplicate_contact"].to_i) %></span>
+      <span>missing <%= number_with_delimiter(csv_import_status["missing_contact"].to_i) %></span>
+      <span>errors <%= number_with_delimiter(csv_import_status["errors"].to_i) %></span>
+    </div>
+    <% if csv_import_status["error"].present? %>
+      <p class="comms-command-csv-import-error"><%= csv_import_status["error"].to_s.truncate(220) %></p>
+    <% elsif csv_import_state == "canceled" %>
+      <p class="comms-command-csv-import-note">Importer canceled for this CSV status. Purged blocks will not keep coming back.</p>
+    <% elsif csv_import_active %>
+      <p class="comms-command-csv-import-note">Building call blocks in the background. You can leave this page; this window will keep checking in.</p>
+    <% else %>
+      <p class="comms-command-csv-import-note">Import complete. Open the CSV status to claim or run the blocks.</p>
+    <% end %>
+  </section>
+  <% if csv_import_active %>
+    <script>
+      window.setTimeout(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.set("csv_import_job", <%= csv_import_status["job_id"].to_json.html_safe %>);
+        window.location.replace(url.toString());
+      }, 2500);
+    </script>
+  <% end %>
+<% end %>
+
+<section class="comms-command-shell">
+  <section class="comms-command-search comms-command-search--with-menu" aria-label="Search comms">
+    <div class="comms-command-search-copy comms-command-search-copy--menus">
+      <div class="comms-command-followup-version" aria-label="Follow-Up autopilot version">
+        <span>Follow-Up</span>
+        <em>autopilot</em>
+        <span>v0.02</span>
+      </div>
+      <div class="comms-command-deck-titlebar comms-command-deck-titlebar--menus comms-command-search-menu">
+        <nav class="comms-command-win-menubar comms-command-win-menubar--titlebar" aria-label="Lead generator menus">
+        <div class="comms-command-win-menu comms-command-win-menu--file" data-comms-win-menu>
+          <button type="button" id="comms-file-menu-trigger" class="comms-command-win-menu-trigger" data-comms-win-menu-trigger aria-haspopup="true" aria-expanded="false" aria-controls="comms-file-menu">File</button>
+          <div id="comms-file-menu" class="comms-command-win-menu-panel comms-command-win-menu-panel--wide" aria-labelledby="comms-file-menu-trigger">
+            <div class="comms-command-win-flyout comms-command-win-flyout--loader" aria-label="Create comm">
+              <div class="comms-command-win-flyout-label" tabindex="0">
+                <span>Load Block</span>
+                <small>One contact</small>
+              </div>
+              <div class="comms-command-win-flyout-panel">
+              <%= form_with url: create_manual_comms_path, method: :post, class: "comms-command-launcher-form comms-command-launcher-form--solo" do %>
+                <%= hidden_field_tag :q, @comms_query if @comms_query.present? %>
+                <%= hidden_field_tag :status, @comms_status_filter %>
+                <%= hidden_field_tag :page, @comms_page %>
+                <%= text_field_tag :contact_label, nil, placeholder: "Name or company", maxlength: 120, class: "comms-command-launcher-input" %>
+                <div class="comms-command-input-action">
+                  <%= text_field_tag :contact_value, nil, placeholder: "Phone or email", maxlength: 160, class: "comms-command-launcher-input", required: true %>
+                  <%= submit_tag "CREATE", class: "comms-command-launcher-submit comms-command-launcher-submit--inline" %>
+                </div>
+              <% end %>
+              </div>
+            </div>
+            <div class="comms-command-win-flyout comms-command-win-flyout--loader comms-command-win-flyout--csv-loader" aria-label="CSV call block generator">
+              <div class="comms-command-win-flyout-label" tabindex="0">
+                <span>Load Blocks</span>
+                <small>CSV uploader</small>
+              </div>
+              <div class="comms-command-win-flyout-panel">
+                <p class="comms-command-kicker">CSV upload</p>
+              <%= form_with url: import_comms_csv_path, method: :post, multipart: true, local: true, data: { turbo: false }, class: "comms-command-launcher-form comms-command-launcher-form--csv" do %>
+                <%= text_field_tag :call_csv_title, nil, placeholder: "Optional status title", maxlength: 80, class: "comms-command-launcher-input" %>
+                <label class="comms-command-launcher-check">
+                  <%= check_box_tag :call_csv_claim_by_me, "1", false %>
+                  <span>Claim imported blocks to me</span>
+                </label>
+                <div class="comms-command-input-action">
+                  <%= file_field_tag :call_csv, accept: ".csv,text/csv", required: true, class: "comms-command-launcher-input" %>
+                  <%= submit_tag "IMPORT", class: "comms-command-launcher-submit comms-command-launcher-submit--inline" %>
+                </div>
+              <% end %>
+              </div>
+            </div>
+            <div class="comms-command-win-flyout comms-command-win-flyout--templates" aria-label="Static batch SMS and email templates">
+              <div class="comms-command-win-flyout-label" tabindex="0">
+                <span>Templates</span>
+                <small>Static SMS/email</small>
+              </div>
+              <div class="comms-command-win-flyout-panel comms-command-win-flyout-panel--templates">
+                <%= form_with url: update_comms_batch_templates_path, method: :patch, class: "comms-command-batch-template-form" do %>
+                  <%= hidden_field_tag :q, @comms_query.presence %>
+                  <%= hidden_field_tag :status, @comms_status_filter %>
+                  <%= hidden_field_tag :page, @comms_page %>
+                  <header class="comms-command-batch-template-head">
+                    <div>
+                      <p class="comms-command-kicker">static campaign copy</p>
+                      <b>Batch Templates</b>
+                    </div>
+                    <div class="comms-command-batch-template-status" aria-label="Active template status">
+                      <span class="comms-command-batch-template-status-pill">SMS <%= active_sms_batch_template.present? ? active_sms_batch_template["title"].to_s.truncate(22) : "OFF" %></span>
+                      <span class="comms-command-batch-template-status-pill">EMAIL <%= active_email_batch_template.present? ? active_email_batch_template["title"].to_s.truncate(22) : "OFF" %></span>
+                    </div>
+                  </header>
+                  <section class="comms-command-batch-template-token-guide" aria-label="Template token guide">
+                    <b>Tokens</b>
+                    <span>Click a chip to copy it. Paste tokens into SMS or email copy; each call block fills its own value at launch.</span>
+                  </section>
+                  <div class="comms-command-batch-template-tokens" aria-label="Template tokens">
+                    <% comms_batch_template_token_options.each do |label, token| %>
+                      <button type="button" title="Copy <%= token %>. Paste it into the template copy." aria-label="Copy <%= label %> token" data-comms-template-token="<%= token %>" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.dataset.commsTemplateToken);this.classList.add('is-copied');window.setTimeout(()=>this.classList.remove('is-copied'),900)">
+                        <span><%= label %></span>
+                        <code><%= token %></code>
+                      </button>
+                    <% end %>
+                  </div>
+                  <section class="comms-command-batch-template-new">
+                    <header class="comms-command-batch-template-section-head">
+                      <b>Create Template</b>
+                      <span>Save reusable batch copy. Copy is required; email templates also need a subject. Leave selection OFF for dynamic Thumper drafting.</span>
+                    </header>
+                    <label>
+                      <span>Type</span>
+                      <%= select_tag "batch_templates[new][type]", options_for_select([["SMS", "sms"], ["EMAIL", "email"]]), class: "comms-command-launcher-input" %>
+                    </label>
+                    <label>
+                      <span>Title</span>
+                      <%= text_field_tag "batch_templates[new][title]", nil, maxlength: 90, placeholder: "July postcard push", class: "comms-command-launcher-input" %>
+                    </label>
+                    <label>
+                      <span>Subject <em>Email only</em></span>
+                      <%= text_field_tag "batch_templates[new][subject]", nil, maxlength: 160, placeholder: "Required for email templates", class: "comms-command-launcher-input" %>
+                    </label>
+                    <label class="comms-command-batch-template-new-body">
+                      <span>Copy <em>Required</em></span>
+                      <%= text_area_tag "batch_templates[new][body]", nil, rows: 4, maxlength: 8000, placeholder: "Required: Hi {{first_name}}, ...", class: "comms-command-launcher-input" %>
+                    </label>
+                    <label class="comms-command-batch-template-activate">
+                      <%= check_box_tag "batch_templates[new][activate]", "1", false %>
+                      <span>Use this after save</span>
+                    </label>
+                  </section>
+                  <div class="comms-command-batch-template-lists">
+                    <section class="comms-command-batch-template-list-card">
+                      <header>
+                        <b>SMS Templates</b>
+                        <label class="comms-command-batch-template-off">
+                          <%= radio_button_tag "batch_templates[selected_sms_template_id]", "", selected_sms_batch_template_id.blank? %>
+                          <span>OFF</span>
+                        </label>
+                      </header>
+                      <% if sms_batch_templates.blank? %>
+                        <p>No SMS templates saved.</p>
+                      <% end %>
+                      <% sms_batch_templates.each do |template| %>
+                        <% template_id = template["id"].to_s %>
+                        <article class="comms-command-batch-template-row">
+                          <%= hidden_field_tag "batch_templates[templates][sms][#{template_id}][id]", template_id %>
+                          <label class="comms-command-batch-template-use">
+                            <%= radio_button_tag "batch_templates[selected_sms_template_id]", template_id, selected_sms_batch_template_id == template_id %>
+                            <span>Use</span>
+                          </label>
+                          <%= text_field_tag "batch_templates[templates][sms][#{template_id}][title]", template["title"], maxlength: 90, class: "comms-command-launcher-input", aria: { label: "SMS template title" } %>
+                          <%= text_area_tag "batch_templates[templates][sms][#{template_id}][body]", template["body"], rows: 3, maxlength: 1200, class: "comms-command-launcher-input", aria: { label: "SMS template body" } %>
+                          <label class="comms-command-batch-template-delete">
+                            <%= check_box_tag "batch_templates[templates][sms][#{template_id}][delete]", "1", false %>
+                            <span>Delete</span>
+                          </label>
+                        </article>
+                      <% end %>
+                    </section>
+                    <section class="comms-command-batch-template-list-card">
+                      <header>
+                        <b>Email Templates</b>
+                        <label class="comms-command-batch-template-off">
+                          <%= radio_button_tag "batch_templates[selected_email_template_id]", "", selected_email_batch_template_id.blank? %>
+                          <span>OFF</span>
+                        </label>
+                      </header>
+                      <% if email_batch_templates.blank? %>
+                        <p>No email templates saved.</p>
+                      <% end %>
+                      <% email_batch_templates.each do |template| %>
+                        <% template_id = template["id"].to_s %>
+                        <article class="comms-command-batch-template-row">
+                          <%= hidden_field_tag "batch_templates[templates][email][#{template_id}][id]", template_id %>
+                          <label class="comms-command-batch-template-use">
+                            <%= radio_button_tag "batch_templates[selected_email_template_id]", template_id, selected_email_batch_template_id == template_id %>
+                            <span>Use</span>
+                          </label>
+                          <%= text_field_tag "batch_templates[templates][email][#{template_id}][title]", template["title"], maxlength: 90, class: "comms-command-launcher-input", aria: { label: "Email template title" } %>
+                          <%= text_field_tag "batch_templates[templates][email][#{template_id}][subject]", template["subject"], maxlength: 160, placeholder: "Subject", class: "comms-command-launcher-input", aria: { label: "Email template subject" } %>
+                          <%= text_area_tag "batch_templates[templates][email][#{template_id}][body]", template["body"], rows: 3, maxlength: 8000, class: "comms-command-launcher-input", aria: { label: "Email template body" } %>
+                          <label class="comms-command-batch-template-delete">
+                            <%= check_box_tag "batch_templates[templates][email][#{template_id}][delete]", "1", false %>
+                            <span>Delete</span>
+                          </label>
+                        </article>
+                      <% end %>
+                    </section>
+                  </div>
+                  <div class="comms-command-batch-template-footer">
+                    <%= submit_tag "SAVE TEMPLATES", class: "comms-command-launcher-submit comms-command-launcher-submit--save-templates" %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+            <span class="comms-command-win-menu-separator" aria-hidden="true"></span>
+            <%= button_to "CLAIM PAGE",
+              claim_visible_comms_path,
+              method: :post,
+              params: { q: @comms_query.presence, status: @comms_status_filter, page: @comms_page },
+              disabled: claim_visible_disabled,
+              form_class: "comms-command-win-menu-form",
+              class: "comms-command-win-menu-action comms-command-win-menu-action--claim #{'comms-command-win-menu-action--blocked' if claim_visible_disabled}",
+              data: { comms_confirm_message: claim_visible_confirm, turbo_confirm: claim_visible_confirm },
+              onclick: claim_visible_disabled ? nil : comms_native_confirm_js.call(claim_visible_confirm),
+              form: { data: { comms_confirm_message: claim_visible_confirm, turbo_confirm: claim_visible_confirm }, onsubmit: comms_confirm_onsubmit_js } %>
+            <span class="comms-command-win-menu-separator" aria-hidden="true"></span>
+            <div class="comms-command-launcher comms-command-tool comms-command-launcher--language comms-command-win-flyout" aria-label="SMS language mode">
+              <div class="comms-command-win-flyout-label" tabindex="0">
+                <span>Language</span>
+                <small><%= sms_language_enabled ? "MULTI ON" : "ENGLISH ONLY" %></small>
+              </div>
+              <div class="comms-command-win-flyout-panel comms-command-win-flyout-panel--followups">
+                <%= form_with url: update_comms_sms_language_settings_path, method: :patch, class: "comms-command-launcher-form" do %>
+                  <%= hidden_field_tag :q, @comms_query.presence %>
+                  <%= hidden_field_tag :status, @comms_status_filter %>
+                  <%= hidden_field_tag :page, @comms_page %>
+                  <%= hidden_field_tag "sms_language[enabled]", "0" %>
+                  <label class="comms-command-launcher-input">
+                    <%= check_box_tag "sms_language[enabled]", "1", sms_language_enabled %>
+                    Multilingual SMS
+                  </label>
+                  <p class="comms-command-runall-warning">OFF keeps SMS in English. The translation wiring stays installed.</p>
+                  <%= submit_tag "SAVE LANGUAGE", class: "comms-command-launcher-submit comms-command-launcher-submit--compact" %>
+                <% end %>
+              </div>
+            </div>
+            <span class="comms-command-win-menu-separator" aria-hidden="true"></span>
+            <div class="comms-command-launcher comms-command-tool comms-command-launcher--followups comms-command-win-flyout" aria-label="Global autopilot follow-up automation">
+              <div class="comms-command-win-flyout-label" tabindex="0">
+                <span>Follow Ups</span>
+                <small>Autopilot only + CST window</small>
+              </div>
+              <div class="comms-command-win-flyout-panel comms-command-win-flyout-panel--followups">
+              <%= form_with url: update_comms_follow_up_settings_path, method: :patch, class: "comms-command-launcher-form" do %>
+                <label class="comms-command-launcher-input">
+                  <%= check_box_tag "follow_up[enabled]", "1", ActiveModel::Type::Boolean.new.cast(@follow_up_settings["enabled"]) %>
+                  Autopilot follow-ups
+                </label>
+                <label class="comms-command-followup-field">
+                  <span>Nudges</span>
+                  <%= number_field_tag "follow_up[quick_nudge_count]", @follow_up_settings["quick_nudge_count"], min: 0, max: 6, step: 1, placeholder: "2", class: "comms-command-launcher-input", aria: { label: "Post last message nudge amount" } %>
+                  <small>post-last</small>
+                </label>
+                <label class="comms-command-followup-field">
+                  <span>Gap</span>
+                  <%= number_field_tag "follow_up[quick_nudge_minutes]", @follow_up_settings["quick_nudge_minutes"], min: 5, max: 240, step: 1, placeholder: "15", class: "comms-command-launcher-input", aria: { label: "Minutes between post last message nudges" } %>
+                  <small>minutes</small>
+                </label>
+                <label class="comms-command-followup-field">
+                  <span>Every</span>
+                  <%= number_field_tag "follow_up[frequency_hours]", @follow_up_settings["frequency_hours"], min: 2, max: 168, step: 1, placeholder: "24", class: "comms-command-launcher-input", aria: { label: "Follow-up frequency in hours" } %>
+                  <small>hours</small>
+                </label>
+                <label class="comms-command-followup-field">
+                  <span>For</span>
+                  <%= number_field_tag "follow_up[duration_days]", @follow_up_settings["duration_days"], min: 1, max: 90, step: 1, placeholder: "14", class: "comms-command-launcher-input", aria: { label: "Follow-up duration in days" } %>
+                  <small>days</small>
+                </label>
+                <label class="comms-command-followup-field">
+                  <span>Max</span>
+                  <%= number_field_tag "follow_up[max_per_day]", @follow_up_settings["max_per_day"], min: 1, max: 12, step: 1, placeholder: "2", class: "comms-command-launcher-input", aria: { label: "Maximum follow-ups per day" } %>
+                  <small>per day</small>
+                </label>
+                <label class="comms-command-followup-field">
+                  <span>Start</span>
+                  <%= time_field_tag "follow_up[send_window_start]", @follow_up_settings["send_window_start"], class: "comms-command-launcher-input", title: "CST start", aria: { label: "CST send window start" } %>
+                  <small>CST</small>
+                </label>
+                <label class="comms-command-followup-field">
+                  <span>End</span>
+                  <%= time_field_tag "follow_up[send_window_end]", @follow_up_settings["send_window_end"], class: "comms-command-launcher-input", title: "CST end", aria: { label: "CST send window end" } %>
+                  <small>CST</small>
+                </label>
+                <%= submit_tag "SAVE FOLLOW-UPS", class: "comms-command-launcher-submit comms-command-launcher-submit--save-followups" %>
+              <% end %>
+              </div>
+            </div>
+            <span class="comms-command-win-menu-separator" aria-hidden="true"></span>
+            <details class="comms-command-email-followup" aria-label="SMS and email follow-up scheduler settings">
+              <summary>
+                <b>Scheduler</b>
+                <span><%= email_follow_up_enabled ? "#{comms_email_follow_up_preset_label(email_follow_up_preset)} // AUTO ONLY" : "OFF" %></span>
+              </summary>
+              <div class="comms-command-email-followup-backdrop" onclick="this.closest('details').open=false" aria-hidden="true"></div>
+              <section class="comms-command-email-followup-panel" role="dialog" aria-modal="true" aria-label="SMS and email follow-up scheduler settings" data-email-followup-panel data-email-followup-presets="<%= email_follow_up_preset_plans.to_json %>">
+                <header class="comms-command-email-followup-head">
+                  <div>
+                    <p class="comms-command-kicker">sms + email // schedule</p>
+                    <h3>Scheduler</h3>
+                    <small>Only blocks with autopilot already on can send from this schedule.</small>
+                  </div>
+                </header>
+                <%= form_with url: update_comms_follow_up_settings_path, method: :patch, class: "comms-command-email-followup-form" do %>
+                  <%= hidden_field_tag "follow_up[email][enabled]", email_follow_up_enabled ? "1" : "0", data: { email_followup_enabled: "true" } %>
+                  <%= hidden_field_tag "follow_up[email][schedule_mode]", email_follow_up_mode, data: { email_followup_mode: "true" } %>
+                  <%= hidden_field_tag "follow_up[email][cadence]", email_follow_up_cadence, data: { email_followup_cadence: "true" } %>
+                  <section class="comms-command-email-followup-section">
+                    <div class="comms-command-email-followup-section-head">
+                      <b>Scheduler</b>
+                      <span data-email-followup-frequency-badge><%= email_follow_up_enabled ? (email_follow_up_cadence == "monthly" ? "30 DAY // SMS OFF WEEKENDS" : "1/DAY // SMS OFF WEEKENDS") : "OFF" %></span>
+                    </div>
+                    <div class="comms-command-email-followup-grid">
+                      <label class="comms-command-email-followup-wide comms-command-email-followup-preset-field">
+                        <%= select_tag "follow_up[email][preset]", options_for_select(comms_email_follow_up_preset_options, email_follow_up_preset_choice), class: "comms-command-launcher-input", data: { email_followup_preset: "true" }, onchange: "window.wizwikiEmailFollowUpPresetFill&&window.wizwikiEmailFollowUpPresetFill(this)", oninput: "window.wizwikiEmailFollowUpPresetFill&&window.wizwikiEmailFollowUpPresetFill(this)" %>
+                        <span>Preset</span>
+                      </label>
+                    </div>
+                    <div class="comms-command-email-monthly" data-email-followup-monthly-only data-email-followup-monthly-active="<%= email_follow_up_preset_choice == "monthly" ? "true" : "false" %>" <%= "hidden" unless email_follow_up_preset_choice == "monthly" %>>
+                      <div class="comms-command-email-monthly-head">
+                        <b>Next 8 weeks</b>
+                        <span>Checked weeks can send; unchecked weeks pause SMS and email</span>
+                      </div>
+                      <div class="comms-command-email-monthly-grid">
+                        <% email_follow_up_week_options.each do |week| %>
+                          <label>
+                            <%= check_box_tag "follow_up[email][selected_weeks][]", week[:key], email_follow_up_selected_weeks.include?(week[:key]), data: { email_followup_week: week[:key] } %>
+                            <span>
+                              <b>Week <%= week[:offset] %> // <%= week[:month] %></b>
+                              <em><%= week[:range] %></em>
+                            </span>
+                          </label>
+                        <% end %>
+                      </div>
+                    </div>
+                  </section>
+                  <section class="comms-command-email-followup-section">
+                    <div class="comms-command-email-followup-section-head">
+                      <b>Weekday Plan</b>
+                      <span data-email-followup-plan-badge><%= email_follow_up_mode == "custom" ? "CUSTOM" : (email_follow_up_preset_choice == "monthly" ? "MONTHLY" : "PRESET") %> // SMS OFF SAT/SUN</span>
+                    </div>
+                    <div class="comms-command-email-day-grid">
+                      <% comms_email_follow_up_day_labels.each do |day, label| %>
+                        <label>
+                          <span><%= label %></span>
+                          <%= select_tag "follow_up[email][daily_plan][#{day}]", options_for_select(comms_email_follow_up_day_action_options, email_follow_up_plan[day].presence || "none"), class: "comms-command-launcher-input", data: { email_followup_day: day }, onchange: "window.wizwikiEmailFollowUpCustomDay&&window.wizwikiEmailFollowUpCustomDay(this)" %>
+                        </label>
+                      <% end %>
+                    </div>
+                  </section>
+                  <footer class="comms-command-email-followup-actions">
+                    <%= submit_tag "SAVE SCHEDULE", class: "comms-command-launcher-submit comms-command-launcher-submit--compact" %>
+                  </footer>
+                <% end %>
+                <script>
+                  window.wizwikiEmailFollowUpSync = function(panel) {
+                    if (!panel) return
+                    const preset = panel.querySelector("[data-email-followup-preset]")
+                    const value = preset ? preset.value : "off"
+                    const enabled = value !== "off"
+                    const monthly = value === "monthly"
+                    panel.querySelectorAll("[data-email-followup-monthly-only]").forEach((node) => {
+                      node.hidden = !monthly
+                      node.dataset.emailFollowupMonthlyActive = monthly ? "true" : "false"
+                    })
+                    const enabledField = panel.querySelector("[data-email-followup-enabled]")
+                    if (enabledField) enabledField.value = enabled ? "1" : "0"
+                    const cadence = panel.querySelector("[data-email-followup-cadence]")
+                    if (cadence) cadence.value = enabled ? (monthly ? "monthly" : "weekly") : "off"
+                    const frequencyBadge = panel.querySelector("[data-email-followup-frequency-badge]")
+                    if (frequencyBadge) frequencyBadge.textContent = enabled ? `${monthly ? "30 DAY" : "1/DAY"} // SMS OFF WEEKENDS` : "OFF"
+                    const badge = panel.querySelector("[data-email-followup-plan-badge]")
+                    const mode = panel.querySelector("[data-email-followup-mode]")
+                    if (badge) badge.textContent = enabled ? `${mode && mode.value === "custom" ? "CUSTOM" : (monthly ? "MONTHLY" : "PRESET")} // SMS OFF SAT/SUN` : "OFF"
+                    if (monthly) {
+                      const checks = Array.from(panel.querySelectorAll("[data-email-followup-week]"))
+                      if (!checks.some((field) => field.checked)) {
+                        checks.forEach((field) => { field.checked = true })
+                      }
+                    }
+                  }
+                  window.wizwikiEmailFollowUpPresetFill = function(select) {
+                    const panel = select.closest("[data-email-followup-panel]")
+                    if (!panel) return
+                    let presets = {}
+                    try { presets = JSON.parse(panel.dataset.emailFollowupPresets || "{}") } catch (error) { presets = {} }
+                    const enabled = select.value !== "off"
+                    const plan = enabled ? (presets[select.value] || {}) : (presets.off || {})
+                    panel.querySelectorAll("[data-email-followup-day]").forEach((field) => {
+                      field.value = plan[field.dataset.emailFollowupDay] || "none"
+                    })
+                    const mode = panel.querySelector("[data-email-followup-mode]")
+                    if (mode) mode.value = "preset"
+                    window.wizwikiEmailFollowUpSync(panel)
+                  }
+                  window.wizwikiEmailFollowUpCustomDay = function(select) {
+                    const panel = select.closest("[data-email-followup-panel]")
+                    if (!panel) return
+                    const mode = panel.querySelector("[data-email-followup-mode]")
+                    if (mode) mode.value = "custom"
+                    window.wizwikiEmailFollowUpSync(panel)
+                  }
+                  window.wizwikiEmailFollowUpBind = function(root) {
+                    const scope = root || document
+                    scope.querySelectorAll("[data-email-followup-preset]").forEach((select) => {
+                      if (select.dataset.emailFollowupBound === "true") return
+                      select.dataset.emailFollowupBound = "true"
+                      select.addEventListener("change", () => window.wizwikiEmailFollowUpPresetFill(select))
+                      select.addEventListener("input", () => window.wizwikiEmailFollowUpPresetFill(select))
+                      window.wizwikiEmailFollowUpSync(select.closest("[data-email-followup-panel]"))
+                    })
+                    scope.querySelectorAll("[data-email-followup-week]").forEach((field) => {
+                      if (field.dataset.emailFollowupWeekBound === "true") return
+                      field.dataset.emailFollowupWeekBound = "true"
+                      field.addEventListener("change", () => window.wizwikiEmailFollowUpSync(field.closest("[data-email-followup-panel]")))
+                    })
+                  }
+                  window.wizwikiEmailFollowUpBind(document)
+                  document.addEventListener("turbo:load", () => window.wizwikiEmailFollowUpBind(document))
+                </script>
+              </section>
+            </details>
+          </div>
+        </div>
+        <div class="comms-command-win-menu comms-command-win-menu--edit" data-comms-win-menu>
+          <button type="button" id="comms-edit-menu-trigger" class="comms-command-win-menu-trigger" data-comms-win-menu-trigger aria-haspopup="true" aria-expanded="false" aria-controls="comms-edit-menu">Edit</button>
+          <div id="comms-edit-menu" class="comms-command-win-menu-panel comms-command-win-menu-panel--batch" aria-labelledby="comms-edit-menu-trigger">
+            <%= link_to "Edit Profile", edit_profile_path, class: "comms-command-win-menu-link comms-command-win-menu-link--profile" %>
+            <span class="comms-command-win-menu-separator" aria-hidden="true"></span>
+            <div class="comms-command-win-flyout comms-command-win-flyout--batch" aria-label="Batch launch options">
+              <div class="comms-command-win-flyout-label" tabindex="0">
+                <span>Batch Options</span>
+                <small>Full auto, copilot, purge</small>
+              </div>
+              <div class="comms-command-win-flyout-panel comms-command-win-flyout-panel--batch">
+                <section class="comms-command-win-batch-panel">
+                  <header class="comms-command-win-panel-head">
+                    <b>Batch Options</b>
+                  </header>
+                  <div class="comms-command-runall-actions comms-command-batch-stack">
+                    <%= form_with url: run_all_comms_autopilot_path, method: :post, class: "comms-command-runall-form comms-command-batch-form", data: { comms_confirm_message: run_all_confirm, turbo_confirm: run_all_confirm }, onsubmit: comms_confirm_onsubmit_js do %>
+                      <%= hidden_field_tag :q, @comms_query.presence %>
+                      <%= hidden_field_tag :status, @comms_status_filter %>
+                      <%= hidden_field_tag :page, @comms_page %>
+                      <div class="comms-command-runall-model-grid comms-command-batch-setting-grid">
+                        <label class="comms-command-runall-model comms-command-runall-model--pace">
+                          <span>PACE</span>
+                          <%= select_tag :run_all_cadence, options_for_select(comms_run_all_cadence_options, run_all_launch_cadence), class: "comms-command-challenger-select comms-command-runall-cadence-select", title: run_all_launch_cadence_label, aria: { label: "Launch cadence for FULL AUTO and COPILOT" } %>
+                        </label>
+                        <label class="comms-command-runall-model comms-command-runall-model--llm">
+                          <span>RUNTIME</span>
+                          <span class="comms-command-warp-toggle comms-command-warp-toggle--batch" role="group" aria-label="SMS writer runtime">
+                            <% comms_runtime_toggle_options.each do |label, value| %>
+                              <% checked = comms_runtime_value.call(run_all_sms_writer_model) == value %>
+                              <% runtime_configured = comms_runtime_configured.call(value) %>
+                              <% runtime_actual_model = comms_runtime_actual_model.call(value) %>
+                              <label class="comms-command-warp-choice <%= 'is-active' if checked %> <%= 'is-unavailable' unless runtime_configured %>" title="<%= "#{label}: #{runtime_actual_model}#{' (endpoint setup required)' unless runtime_configured}" %>">
+                                <%= radio_button_tag :sms_writer_model, value, checked, class: "comms-command-warp-radio" %>
+                                <span class="comms-command-warp-label"><%= label %></span>
+                                <small class="comms-command-warp-model"><%= comms_runtime_model_label.call(value) %><%= " / SETUP" unless runtime_configured %></small>
+                              </label>
+                            <% end %>
+                          </span>
+                        </label>
+                      </div>
+                      <%= submit_tag "FULL AUTO",
+                        disabled: run_all_disabled,
+                        class: "comms-command-launcher-submit comms-command-launcher-submit--run-all #{'comms-command-launcher-submit--blocked' if @run_all_blocked_by_visible_dnc}",
+                        data: { comms_confirm_message: run_all_confirm, turbo_confirm: run_all_confirm },
+                        onclick: run_all_disabled ? nil : comms_native_confirm_js.call(run_all_confirm) %>
+                      <%= submit_tag "COPILOT",
+                        disabled: copilot_disabled,
+                        formaction: run_all_comms_copilot_path,
+                        formmethod: "post",
+                        class: "comms-command-launcher-submit comms-command-launcher-submit--copilot #{'comms-command-launcher-submit--blocked' if copilot_disabled}",
+                        data: { comms_confirm_message: copilot_confirm, turbo_confirm: copilot_confirm },
+                        onclick: copilot_disabled ? nil : comms_native_confirm_js.call(copilot_confirm) %>
+                    <% end %>
+                    <%= button_to "PURGE",
+                      delete_all_comms_commands_path,
+                      method: :delete,
+                      params: { q: @comms_query.presence, status: @comms_status_filter, page: @comms_page },
+                      disabled: remove_all_visible_count.zero?,
+                      class: "comms-command-launcher-submit comms-command-launcher-submit--danger #{'comms-command-launcher-submit--blocked' if remove_all_visible_count.zero?}",
+                      data: { comms_confirm_message: remove_all_confirm, turbo_confirm: remove_all_confirm },
+                      onclick: remove_all_visible_count.zero? ? nil : comms_native_confirm_js.call(remove_all_confirm),
+                      form: { data: { comms_confirm_message: remove_all_confirm, turbo_confirm: remove_all_confirm }, onsubmit: comms_confirm_onsubmit_js } %>
+                  </div>
+                  <% if @run_all_blocked_by_visible_dnc %>
+                    <small class="comms-command-runall-warning">FULL AUTO is locked because a visible block is marked DO NOT CONTACT. COPILOT will skip opt-outs because it only drafts.</small>
+                  <% end %>
+                  <% if bulk_status["state"].present? %>
+                    <small class="comms-command-runall-warning comms-command-runall-warning--queue">
+                      BULK QUEUE // <%= bulk_status["state"].to_s.upcase %>
+                      <% if bulk_status["stage_count"].to_i.positive? %>
+                        // <%= number_with_delimiter(bulk_status["current_index"].to_i) %>/<%= number_with_delimiter(bulk_status["stage_count"].to_i) %>
+                        // sent <%= number_with_delimiter(bulk_status["started"].to_i) %>
+                        // skipped <%= number_with_delimiter(bulk_status["skipped"].to_i) %>
+                        // failed <%= number_with_delimiter(bulk_status["failed"].to_i) %>
+                      <% end %>
+                      <% if bulk_status["current_stage_name"].present? %>
+                        // now <%= bulk_status["current_stage_name"].to_s.truncate(42) %>
+                      <% end %>
+                      <% if bulk_status["run_id"].present? %>
+                        // run <%= bulk_status["run_id"].to_s.first(8) %>
+                      <% end %>
+                      <% if bulk_status.dig("source", "launch_cadence_label").present? %>
+                        // pace <%= bulk_status.dig("source", "launch_cadence_label") %>
+                      <% end %>
+                      <% if bulk_status.dig("source", "static_sms_template", "title").present? %>
+                        // template <%= bulk_status.dig("source", "static_sms_template", "title").to_s.truncate(32) %>
+                      <% end %>
+                      <% if bulk_status.dig("source", "stage_ids").present? %>
+                        // fixed snapshot
+                      <% end %>
+                    </small>
+                  <% end %>
+                  <% if copilot_bulk_status["state"].present? %>
+                    <small class="comms-command-runall-warning comms-command-runall-warning--queue">
+                      COPILOT QUEUE // <%= copilot_bulk_status["state"].to_s.upcase %>
+                      <% if copilot_bulk_status["stage_count"].to_i.positive? %>
+                        // <%= number_with_delimiter(copilot_bulk_status["current_index"].to_i) %>/<%= number_with_delimiter(copilot_bulk_status["stage_count"].to_i) %>
+                        // queued <%= number_with_delimiter(copilot_bulk_status["queued"].to_i) %>
+                        // ready <%= number_with_delimiter(copilot_bulk_status["drafted"].to_i) %>
+                        // skipped <%= number_with_delimiter(copilot_bulk_status["skipped"].to_i) %>
+                        // failed <%= number_with_delimiter(copilot_bulk_status["failed"].to_i) %>
+                      <% end %>
+                      <% if copilot_bulk_status["current_stage_name"].present? %>
+                        // now <%= copilot_bulk_status["current_stage_name"].to_s.truncate(42) %>
+                      <% end %>
+                      <% if copilot_bulk_status["run_id"].present? %>
+                        // run <%= copilot_bulk_status["run_id"].to_s.first(8) %>
+                      <% end %>
+                      <% if copilot_bulk_status.dig("source", "launch_cadence_label").present? %>
+                        // pace <%= copilot_bulk_status.dig("source", "launch_cadence_label") %>
+                      <% end %>
+                      <% if copilot_bulk_status.dig("source", "static_sms_template", "title").present? %>
+                        // template <%= copilot_bulk_status.dig("source", "static_sms_template", "title").to_s.truncate(32) %>
+                      <% end %>
+                      <% if copilot_bulk_status.dig("source", "stage_ids").present? %>
+                        // fixed snapshot
+                      <% end %>
+                    </small>
+                  <% end %>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+        </nav>
+      </div>
+    </div>
+    <div class="comms-command-search-workbench">
+      <%= form_with url: comms_command_path, method: :get, class: "comms-command-search-form" do %>
+        <%= hidden_field_tag :status, @comms_status_filter %>
+        <%= search_field_tag :q, @comms_query, placeholder: "Search any COMMS data", class: "comms-command-launcher-input" %>
+        <%= submit_tag "SEARCH", class: "comms-command-launcher-submit" %>
+        <% if @comms_query.present? %>
+          <%= link_to "CLEAR", comms_command_path(status: @comms_status_filter, q: "", page: 1), class: "comms-command-search-clear" %>
+        <% end %>
+      <% end %>
+      <%= form_with url: comms_command_path, method: :get, class: "comms-command-filter-form" do %>
+        <%= hidden_field_tag :q, @comms_query if @comms_query.present? %>
+        <label>
+          <span>Show status</span>
+          <%= select_tag :status,
+            options_for_select(@comms_status_filter_options.map { |value, label|
+              count = @comms_status_counts.to_h[value].to_i
+              ["#{label} (#{number_with_delimiter(count)})", value]
+            }, @comms_status_filter),
+            class: "comms-command-launcher-input" %>
+        </label>
+        <%= submit_tag "SHOW", class: "comms-command-launcher-submit comms-command-launcher-submit--compact" %>
+        <small>Hidden, complete, opt-out, and hold stay out of active runs.</small>
+      <% end %>
+      <% if @comms_query.present? %>
+        <small class="comms-command-search-count"><%= pluralize(@stages.length, "matching COMMS block") %> shown for “<%= @comms_query %>”.</small>
+      <% end %>
+      <nav class="comms-command-pagination" aria-label="COMMS pages">
+        <% if @comms_has_previous_page %>
+          <%= link_to "⏪", comms_command_path(q: @comms_query.presence, status: @comms_status_filter.presence, page: @comms_page - 1), class: "comms-command-page-block", title: "Previous 100" %>
+        <% else %>
+          <span class="comms-command-page-block comms-command-page-block--disabled">⏪</span>
+        <% end %>
+        <span class="comms-command-page-range">
+          <b><%= number_with_delimiter(@comms_page_start.to_i) %>-<%= number_with_delimiter(@comms_page_end.to_i) %></b>
+          <small>Page <%= @comms_page %> // max <%= number_with_delimiter(@comms_page_size.to_i) %></small>
+        </span>
+        <% if @comms_has_next_page %>
+          <%= link_to "⏩", comms_command_path(q: @comms_query.presence, status: @comms_status_filter.presence, page: @comms_page + 1), class: "comms-command-page-block", title: "Next 100" %>
+        <% else %>
+          <span class="comms-command-page-block comms-command-page-block--disabled">⏩</span>
+        <% end %>
+      </nav>
+    </div>
+  </section>
+
+  <% comms_discovery_version = ->(stage) do
+    metadata = stage.metadata.to_h
+    bot_state = metadata["comms_bot_state"].to_h
+    [
+      stage_processing_code(stage),
+      bot_state.values_at(
+        "route_code",
+        "contact_name",
+        "company_name",
+        "autopilot_complete"
+      ),
+      metadata.values_at(
+        "captured_contact_name",
+        "captured_company_name",
+        "product_interest_code",
+        "product_interest_label",
+        "shopify_link",
+        "shopify_link_sent_at",
+        "sms_autopilot_completed_at",
+        "sms_autopilot_completion_sent_at",
+        "sms_autopilot_slack_human_requested_at",
+        "sms_autopilot_slack_completion_without_purchase_at",
+        "sms_autopilot_slack_handoff_at",
+        "comms_support_state",
+        "sms_do_not_contact",
+        "sms_do_not_contact_at",
+        "sms_do_not_contact_reason"
+      )
+    ].flatten.compact_blank.map(&:to_s).join(":")
+  end %>
+
+  <% comms_board_version = @stages.map { |stage|
+    metadata = stage.metadata.to_h
+    sms_thread = Array(metadata["sms_thread"])
+    [
+      stage.id,
+      stage.updated_at.to_f,
+      stage.status,
+      comms_discovery_version.call(stage),
+      sms_thread.length,
+      sms_thread.last.to_h["id"],
+      sms_thread.last.to_h["provider_message_id"],
+      metadata["comms_command_last_status"],
+      metadata["shopify_link_sent_at"],
+      metadata["sms_autopilot_slack_human_requested_at"],
+      metadata["sms_autopilot_slack_completion_without_purchase_at"],
+      metadata["sms_autopilot_slack_handoff_at"],
+      metadata["comms_support_state"],
+      metadata["sms_do_not_contact_at"],
+      metadata["sms_do_not_contact_reason"],
+      metadata["sms_listener_last_outbound_sid"],
+      Digest::SHA1.hexdigest(metadata["comms_command_sms_draft_body"].to_s)[0, 12],
+      metadata["comms_command_background_question_id"],
+      metadata["comms_command_background_status"],
+      metadata["comms_board_state"],
+      metadata["comms_bulk_run_id"],
+      metadata["comms_bulk_run_status"],
+      metadata["comms_bulk_run_updated_at"],
+      metadata.dig("comms_bulk_run", "position"),
+      metadata.dig("comms_bulk_run", "stage_count"),
+      @comms_status_filter
+    ].compact.join(":")
+  }.join("|") %>
+  <div class="comms-command-board"
+       role="region"
+       aria-label="Staged communications schedule"
+       data-controller="comms-board"
+       data-comms-board-url-value="<%= comms_command_path(q: @comms_query.presence, status: @comms_status_filter.presence, page: @comms_page) %>"
+       data-comms-board-version-url-value="<%= comms_board_version_path %>"
+       data-comms-board-change-token-value="<%= @comms_board_change_token %>"
+       data-comms-board-version-value="<%= comms_board_version %>"
+       data-comms-board-interval-value="15000">
+    <div class="comms-command-board-head">
+      <span>TRACK</span>
+      <span>COMPANY</span>
+      <span>CONTACT</span>
+      <span>NUMBER</span>
+      <span>EMAIL</span>
+      <span>COMMANDS</span>
+    </div>
+
+    <% if @stages.present? %>
+      <% @stages.each_with_index do |stage, index| %>
+        <% contact = stage_selected_contact(stage).to_h %>
+        <% phone = stage_selected_phone(stage).to_h %>
+        <% email = stage_selected_email(stage).to_h %>
+        <% sms_body = stage_sms_body(stage) %>
+        <% sms_draft = stage.metadata.to_h["comms_command_sms_draft"].to_h %>
+        <% sms_prompt = stage.metadata.to_h["comms_command_sms_prompt"].to_s %>
+        <% email_subject = stage_email_subject(stage) %>
+        <% email_body = stage_email_body(stage) %>
+        <% email_prompt = stage.metadata.to_h["comms_command_email_prompt"].to_s %>
+        <% sms_thread = stage_sms_thread(stage) %>
+        <% sms_reset_at = stage_sms_conversation_reset_time(stage) %>
+        <% sms_discovery_reset = sms_reset_at.present? && ActiveModel::Type::Boolean.new.cast(stage.metadata.to_h["sms_discovery_reset"]) %>
+        <% sms_thread_after_reset = stage_sms_events_after_reset(stage) %>
+        <% sms_customer_signal_after_reset = sms_thread_after_reset.any? do |event|
+          event = event.to_h
+          event["channel"].to_s == "sms" && event["direction"].to_s == "inbound" && event["body"].to_s.squish.present?
+        end %>
+        <% sms_product_reset_pending = sms_discovery_reset && !sms_customer_signal_after_reset %>
+        <% email_thread = stage_email_thread(stage) %>
+        <% tel_href = tel_href_for(phone["value"]) %>
+        <% processing_code = stage_processing_code(stage) %>
+        <% processing_summary = stage_processing_summary(stage) %>
+        <% if sms_product_reset_pending %>
+          <% processing_code = nil %>
+          <% processing_summary = "Route pending. Thumper is waiting for a customer signal in the chat." %>
+        <% end %>
+        <% has_new_inbound = stage_recent_inbound_sms?(stage) %>
+        <% sms_do_not_contact = stage_sms_do_not_contact?(stage) %>
+        <% sms_sending_disabled = sms_do_not_contact || ActiveModel::Type::Boolean.new.cast(stage.metadata.to_h["sms_sending_disabled"]) %>
+        <% sms_listener_active = !sms_do_not_contact && ActiveModel::Type::Boolean.new.cast(stage.metadata.to_h["sms_listener_active"]) %>
+        <% sms_autopilot_enabled = stage_sms_autopilot_enabled?(stage) %>
+        <% sms_background_drafting = stage_sms_background_drafting?(stage) %>
+        <% sms_progress_live = sms_background_drafting %>
+        <% sms_progress_label = "Thumper COMPOSING" %>
+        <% draft_progress_started_at = stage.metadata.to_h["comms_command_background_at"].presence || sms_draft["created_at"].presence %>
+        <% sms_progress_signals = sms_progress_live ? stage_sms_draft_progress_signals(stage) : [] %>
+        <% sms_first_sent = stage_first_sms_sent?(stage) %>
+        <% sms_watchdog = stage.metadata.to_h["sms_no_ghost_watchdog"].to_h %>
+        <% sms_pre_send_review = stage.metadata.to_h["sms_pre_send_verifier_last"].to_h %>
+        <% sms_callblock = !sms_do_not_contact && (
+          sms_watchdog["status"].to_s == "needs_attention" ||
+          stage.metadata.to_h["sms_reply_job_status"].to_s == "needs_attention" ||
+          sms_pre_send_review["status"].to_s == "blocked"
+        ) %>
+        <% sms_callblock_reason = if sms_watchdog["status"].to_s == "needs_attention"
+          sms_watchdog["reason"].presence || "SMS watchdog needs human attention"
+        elsif sms_pre_send_review["status"].to_s == "blocked"
+          sms_pre_send_review["reason"].presence || "Pre-send verifier blocked the next SMS"
+        else
+          stage.metadata.to_h["sms_autopilot_last_error"].presence || "Thumper needs human attention before the next SMS"
+        end %>
+        <% sms_attn_event = stage_latest_inbound_sms_event(stage) %>
+        <% sms_recent_client_reply = stage_recent_client_sms_response?(stage) %>
+        <% sms_attention = sms_callblock || (sms_recent_client_reply && sms_first_sent && !sms_do_not_contact) %>
+        <% sms_attn_active = sms_attention %>
+        <% sms_attn_started_at = sms_callblock ? (sms_watchdog["checked_at"].presence || sms_pre_send_review["checked_at"].presence || Time.current.iso8601) : (sms_attn_event.to_h["created_at"].presence || sms_attn_event.to_h["at"].presence || sms_attn_event.to_h["timestamp"].presence || Time.current.iso8601) %>
+        <% bot_state = stage.metadata.to_h["comms_bot_state"].to_h %>
+        <% generic_comms_label = ->(value) do
+          text = value.to_s.squish.downcase
+          text.blank? || text.match?(/\A(?:wizwiki\s*)?comms\b/) || text.match?(/\Amanual\s+comms\b/) || text.match?(/\Achoose\s+in\s+lab\b/)
+        end %>
+        <% generic_identity = ->(value) do
+          text = value.to_s.squish.downcase
+          text.blank? || %w[wizwiki\ comms sample\ comms manual\ comms choose\ in\ lab contact customer].include?(text) || text.match?(/\A(?:wizwiki\s*)?comms\b/) || text.match?(/\Asample\b/)
+        end %>
+        <% same_identity = ->(left, right) do
+          normalize = ->(value) { value.to_s.downcase.gsub(/[^a-z0-9]/, "") }
+          left_key = normalize.call(left)
+          right_key = normalize.call(right)
+          left_key.present? && right_key.present? && left_key == right_key
+        end %>
+        <% bot_contact_name = bot_state["contact_name"].presence || (sms_discovery_reset ? nil : stage.metadata.to_h["captured_contact_name"].presence || contact["name"].presence) %>
+        <% bot_contact_name = nil if generic_identity.call(bot_contact_name) %>
+        <% bot_company_name = bot_state["company_name"].presence || (sms_discovery_reset ? nil : stage.metadata.to_h["captured_company_name"].presence || stage_company_name(stage)) %>
+        <% bot_company_name = nil if generic_identity.call(bot_company_name) %>
+        <% bot_company_name = nil if same_identity.call(bot_company_name, bot_contact_name) %>
+        <% bot_route = sms_product_reset_pending ? "pending" : (stage.metadata.to_h["product_interest_code"].presence || bot_state["route_code"].presence || "pending") %>
+<% bot_product_label = sms_product_reset_pending ? nil : (stage.metadata.to_h["product_interest_label"].presence || bot_state["route_label"].presence || bot_route.to_s.tr("_", " ").titleize) %>
+<% bot_owner = stage.metadata.to_h["comms_routed_to_user_name"].presence || stage.metadata.to_h["comms_routed_to_user_email"].presence %>
+<% bot_contact_owner_status = bot_owner.present? ? bot_owner : (sms_autopilot_enabled ? "running" : "pending") %>
+<% bot_route_known = bot_route.present? && bot_route != "pending" %>
+<% bot_campaign_fit = bot_state["campaign_fit"].to_h %>
+<% bot_industry = bot_state["industry"].presence || (sms_discovery_reset ? nil : stage.metadata.to_h["captured_industry"].presence || stage.metadata.to_h["industry"].presence) %>
+<% bot_email = sms_discovery_reset ? nil : stage.metadata.to_h["captured_email"].presence || email["email"].presence || email["value"].presence %>
+<% bot_email_opt_in = sms_discovery_reset ? nil : stage.metadata.to_h["email_opt_in"].presence %>
+<% bot_contact_preference = sms_discovery_reset ? nil : stage.metadata.to_h["contact_preference"].presence %>
+<% bot_preferred_contact_window = sms_discovery_reset ? nil : stage.metadata.to_h["preferred_contact_window"].presence || stage.metadata.to_h["preferred_contact_days"].presence || stage.metadata.to_h["preferred_contact_times"].presence %>
+<% bot_proof_delivery = sms_discovery_reset ? nil : stage.metadata.to_h["proof_delivery_email"].presence || stage.metadata.to_h["proof_delivery_method"].presence %>
+<% contact_snapshot_active = bot_email.present? || bot_email_opt_in.present? || bot_contact_preference.present? || bot_preferred_contact_window.present? || bot_proof_delivery.present? %>
+<% inbound_thread_text = sms_thread_after_reset.filter_map { |event| event.to_h["direction"].to_s == "inbound" ? event.to_h["body"].to_s : nil }.join(" ") %>
+<% inferred_budget_match = inbound_thread_text.match(/\b(?:no budget|open budget|flexible budget|no cap|no limit)\b|\$\s?[\d,]+|\b[\d,.]+\s*[km]\b(?!\s*(?:homes?|houses?|households?|doors?|addresses?|mailboxes?|signs?))|\b(?:budget|spend|around|under|up to)\s+\$?[\d,.]+\s*[km]?\b/i) %>
+<% inferred_size_match = inbound_thread_text.match(/\b[\d,]{1,6}\s*(?:homes?|houses?|households?|doors?|addresses?|mailboxes?|yard signs?|lawn signs?|signs?|postcards?|mailers?|door hangers?)\b/i) %>
+<% inferred_artwork_match = inbound_thread_text.match(/\b(?:artwork|design|creative|logo|file|layout|ai design|designer|designers)\b/i) %>
+<% fit_budget_value = bot_campaign_fit["budget"].presence || inferred_budget_match.to_s.presence %>
+<% fit_size_value = bot_campaign_fit["quantity_count"].presence || bot_campaign_fit["household_count"].presence || inferred_size_match.to_s.presence %>
+<% fit_artwork_value = bot_campaign_fit["artwork_status"].presence || inferred_artwork_match.to_s.presence %>
+<% fit_budget_known = fit_budget_value.present? %>
+<% fit_size_known = fit_size_value.present? %>
+<% fit_artwork_known = fit_artwork_value.present? %>
+<% link_sent = stage_link_sent?(stage) %>
+<% am_support = stage.metadata.to_h["sms_autopilot_slack_human_requested_at"].present? ||
+  stage.metadata.to_h["sms_autopilot_slack_completion_without_purchase_at"].present? ||
+  stage.metadata.to_h["sms_autopilot_slack_handoff_at"].present? ||
+  stage.metadata.to_h["comms_support_state"].to_s == "am_support" ||
+  stage.metadata.to_h["comms_command_last_status"].to_s.in?(%w[human_requested account_manager_support am_support]) ||
+  stage.metadata.to_h["comms_route_claim_reason"].to_s.match?(/\b(human_requested|account_manager_answer_needed)\b/) %>
+<% discovery_checks = [
+  ["product", bot_route_known],
+  ["budget", fit_budget_known],
+  ["size", fit_size_known],
+  ["artwork", fit_artwork_known],
+  ["name", bot_contact_name.present?],
+  ["company", bot_company_name.present?],
+  ["link", link_sent]
+] %>
+<% discovery_done = discovery_checks.count { |_label, done| done } %>
+<% discovery_total = discovery_checks.length %>
+<% discovery_percent = ((discovery_done.to_f / discovery_total) * 100).round %>
+<% discovery_complete = discovery_done == discovery_total %>
+<% discovery_next = discovery_checks.find { |_label, done| !done }&.first %>
+<% discovery_next_label = discovery_complete ? "ready" : discovery_next.to_s.tr("_", " ") %>
+<% completion_marked = stage.metadata.to_h["sms_autopilot_completed_at"].present? || stage.metadata.to_h["sms_autopilot_completion_sent_at"].present? || ActiveModel::Type::Boolean.new.cast(bot_state["autopilot_complete"]) %>
+	<% sms_autopilot_complete = discovery_complete && link_sent && completion_marked && !has_new_inbound %>
+	<% comms_watch_active = !sms_do_not_contact && (sms_listener_active || sms_autopilot_enabled || has_new_inbound || !sms_autopilot_complete) %>
+	<% follow_up_timer = stage_follow_up_timer(stage) %>
+	<% call_status = stage_call_status(stage, follow_up_timer: follow_up_timer) %>
+	<% call_status_key = call_status[:key].to_s %>
+	<% card_status_label = call_status_key == "autopilot" ? nil : call_status[:label] %>
+	<% card_status_label = "CALLBLOCK" if sms_callblock %>
+	<% call_status_class = "comms-command-row--status-#{call_status_key.tr('_', '-')}" %>
+<% card_direction_label = stage.metadata.to_h["comm_kit_direction_label"].presence %>
+<% card_direction_label = nil if generic_comms_label.call(card_direction_label) %>
+<% card_contact_label = contact["name"].presence %>
+<% card_contact_label = nil if generic_identity.call(card_contact_label) %>
+	<% card_company_label = stage.metadata.to_h["company_name"].presence || stage.metadata.to_h["captured_company_name"].presence || bot_company_name.presence || stage_company_name(stage) %>
+<% card_company_label = nil if generic_comms_label.call(card_company_label) || same_identity.call(card_company_label, card_contact_label) || same_identity.call(card_company_label, bot_contact_name) %>
+        <% comms_record = stage.crm_record %>
+<% report_artifacts = @report_artifacts_by_record_id.to_h.fetch(comms_record&.id, []) %>
+<% report_artifacts = report_artifacts.sort_by(&:created_at).reverse %>
+<% client_report_count = report_artifacts.count { |artifact| (artifact.metadata.to_h["report_audience"].presence || "client").to_s == "client" } %>
+<% am_report_count = report_artifacts.count { |artifact| artifact.metadata.to_h["report_audience"].to_s == "am" } %>
+<% copy_maker_report_count = report_artifacts.count { |artifact| artifact.metadata.to_h["report_audience"].to_s == "copy_maker" } %>
+<% active_client_report = report_artifacts.find { |artifact| artifact.status.to_s.in?(%w[queued generating report_ready]) && (artifact.metadata.to_h["report_audience"].presence || "client").to_s == "client" } %>
+<% active_am_report = report_artifacts.find { |artifact| artifact.status.to_s.in?(%w[queued generating report_ready]) && artifact.metadata.to_h["report_audience"].to_s == "am" } %>
+<% active_copy_maker_report = report_artifacts.find { |artifact| artifact.status.to_s.in?(%w[queued generating report_ready]) && artifact.metadata.to_h["report_audience"].to_s == "copy_maker" } %>
+<% active_report = active_client_report || active_am_report || active_copy_maker_report %>
+<% latest_doc_report = report_artifacts.find(&:report_ready?) %>
+<% latest_kit_report = report_artifacts.find(&:canva_kit_ready?) %>
+<% docs_ready_report = report_artifacts.find { |artifact| artifact.status.to_s.in?(%w[report_ready canva_kit_ready ready archived]) } %>
+<% docs_ready_count = report_artifacts.count { |artifact| artifact.status.to_s.in?(%w[report_ready canva_kit_ready ready archived]) } %>
+<% active_report_audience = active_report&.metadata.to_h["report_audience"].presence || "client" %>
+<% active_report_label = active_report_audience.to_s == "copy_maker" ? "COPY" : active_report_audience.to_s.upcase %>
+        <% media_attachments = comms_record&.deal_media&.attachments&.to_a || [] %>
+        <% record_claimed_by_me = comms_record&.owner_id.present? && comms_record.owner_id == current_user.id %>
+        <% record_claimed = comms_record&.owner_id.present? %>
+        <% record_claim_label = record_claimed_by_me ? "you" : (comms_record&.owner&.display_name.presence || "AM") %>
+        <% sms_thread_last = sms_thread.last.to_h %>
+        <% bulk_run = stage.metadata.to_h["comms_bulk_run"].to_h %>
+        <% bulk_run_status = bulk_run["status"].to_s.presence || stage.metadata.to_h["comms_bulk_run_status"].to_s.presence %>
+        <% bulk_run_mode = bulk_run["mode"].to_s.presence || stage.metadata.to_h["comms_bulk_run_mode"].to_s.presence %>
+        <% bulk_run_label = bulk_run_mode == "copilot" ? "COPILOT" : "FULL AUTO" %>
+        <% bulk_run_id = bulk_run["run_id"].to_s.presence || stage.metadata.to_h["comms_bulk_run_id"].to_s.presence %>
+        <% bulk_run_position = bulk_run["position"].presence || stage.metadata.to_h["comms_bulk_run_position"].presence %>
+        <% bulk_run_stage_count = bulk_run["stage_count"].presence || stage.metadata.to_h["comms_bulk_run_stage_count"].presence %>
+        <% comms_station_version = [
+          stage.updated_at.to_f,
+          sms_thread.length,
+          Digest::SHA1.hexdigest(sms_thread.map { |event| event.to_h.slice("direction", "status", "body", "provider_message_id", "created_at") }.to_json)[0, 12],
+          sms_thread_last["id"],
+          sms_thread_last["provider_message_id"],
+          sms_thread_last["created_at"],
+          sms_draft["created_at"],
+          Digest::SHA1.hexdigest(stage.metadata.to_h["comms_command_sms_draft_body"].to_s)[0, 12],
+          comms_discovery_version.call(stage),
+          bot_email,
+          bot_email_opt_in,
+          bot_contact_preference,
+          bot_preferred_contact_window,
+          stage.metadata.to_h["comms_command_last_status"],
+          stage.metadata.to_h["comms_command_background_question_id"],
+          stage.metadata.to_h["comms_command_background_status"],
+          stage.metadata.to_h["sms_listener_last_outbound_sid"],
+          bulk_run_id,
+          bulk_run_status,
+          bulk_run["updated_at"],
+          bulk_run_position,
+          bulk_run_stage_count,
+          active_report&.updated_at&.to_f,
+          latest_doc_report&.id,
+          latest_doc_report&.status,
+          latest_kit_report&.id
+        ].compact.join(":") %>
+        <article id="stage-<%= stage.id %>"
+		          class="comms-command-row <%= call_status_class %> <%= 'comms-command-row--fresh' unless sms_first_sent %> <%= 'comms-command-row--sent' if sms_first_sent %> <%= 'comms-command-row--new-inbound comms-command-row--attention' if sms_attention %> <%= 'comms-command-row--callblock' if sms_callblock %> <%= 'comms-command-row--listening' if sms_listener_active %> <%= 'comms-command-row--autopilot' if sms_autopilot_enabled %> <%= 'comms-command-row--drafting' if sms_background_drafting %> <%= 'comms-command-row--report-running' if active_report.present? %> <%= 'comms-command-row--docs-ready' if docs_ready_report.present? %> <%= 'comms-command-row--stale-due' if follow_up_timer[:state].to_s == 'due' %> <%= 'comms-command-row--complete' if sms_autopilot_complete %> <%= 'comms-command-row--link-sent' if link_sent %> <%= 'comms-command-row--am-support' if am_support %> <%= 'comms-command-row--do-not-contact' if sms_do_not_contact %>"
+          data-controller="comms-station"
+          data-comms-station-url-value="<%= live_comms_command_path(stage) %>"
+          data-comms-station-stage-id-value="<%= stage.id %>"
+data-comms-station-version-value="<%= comms_station_version %>"
+data-comms-station-watch-value="<%= (@comms_open_sms_stage_id.presence || params[:open_sms_stage].to_s).to_s == stage.id.to_s %>"
+data-comms-station-interval-value="5000">
+
+          <div class="comms-command-card-head">
+	            <div class="comms-command-cell comms-command-track">
+                <strong><%= (@comms_offset.to_i + index + 1).to_s.rjust(2, "0") %></strong>
+              <%= form_with url: update_comms_board_state_path(stage), method: :patch, class: "comms-command-board-state-form" do %>
+                <%= hidden_field_tag :q, @comms_query if @comms_query.present? %>
+                <%= hidden_field_tag :status, @comms_status_filter if @comms_status_filter.present? %>
+                <%= select_tag :board_state,
+                  options_for_select(comms_board_state_options.map { |value, label| [label, value] }, stage_manual_board_state(stage)),
+                  class: "comms-command-board-state-select",
+                  aria: { label: "Board status for #{stage_company_name(stage)}" } %>
+                <%= submit_tag "SET", class: "comms-command-board-state-submit" %>
+              <% end %>
+	            </div>
+            <div class="comms-command-cell comms-command-cell--company">
+              <% if card_company_label.present? %>
+                <b class="comms-command-card-company"><%= card_company_label %></b>
+              <% end %>
+              <% if processing_code.present? %>
+                <span class="comms-command-processing-code"><%= processing_code %></span>
+              <% end %>
+            </div>
+            <div class="comms-command-card-status <%= 'comms-command-card-status--quiet-label' unless card_status_label.present? %>"
+                 data-follow-up-timer
+                 data-follow-up-timer-state="<%= call_status[:timer_state] %>"
+                 data-follow-up-timer-due-at="<%= call_status[:due_at] %>"
+                 data-follow-up-timer-prefix="<%= call_status[:timer_state].to_s == 'capped' ? 'CAP RESETS' : (call_status[:timer_state].to_s == 'outside_window' ? 'WINDOW IN' : 'NEXT IN') %>"
+                 data-follow-up-timer-due-label="<%= call_status[:timer_state].to_s == 'capped' ? 'DAILY CAP RESET' : (call_status[:timer_state].to_s == 'outside_window' ? 'WINDOW OPEN' : 'STALE NOW') %>">
+              <% if card_status_label.present? %>
+                <b><%= card_status_label %></b>
+              <% end %>
+              <span><%= sms_callblock ? sms_callblock_reason.to_s.truncate(90) : call_status[:last_label] %></span>
+              <span><em data-follow-up-timer-label><%= sms_callblock ? "HUMAN CHECK" : call_status[:next_label] %></em></span>
+            </div>
+          </div>
+
+          <div class="comms-command-contact-snapshot <%= 'comms-command-contact-snapshot--empty' unless contact_snapshot_active %>">
+            <% if bot_email.present? %>
+              <span><b>email</b><strong><%= bot_email %></strong></span>
+            <% elsif bot_email_opt_in.present? %>
+              <span><b>email</b><strong><%= bot_email_opt_in == "no" ? "declined" : bot_email_opt_in %></strong></span>
+            <% end %>
+            <% if bot_contact_preference.present? %>
+              <span><b>pref</b><strong><%= bot_contact_preference %></strong></span>
+            <% end %>
+            <% if bot_preferred_contact_window.present? %>
+              <span><b>follow-up</b><strong><%= bot_preferred_contact_window %></strong></span>
+            <% end %>
+            <% if bot_proof_delivery.present? %>
+              <span><b>proofs</b><strong><%= bot_proof_delivery %></strong></span>
+            <% end %>
+          </div>
+
+          <% if active_report.present? %>
+            <div class="comms-command-report-timer"
+                 data-report-card-timer
+                 data-report-card-timer-started-at="<%= active_report.created_at&.iso8601 %>"
+                 data-report-card-timer-status="<%= active_report.status %>"
+                 data-report-card-timer-label="<%= active_report_label %>">
+              <div>
+                <b>RPT #<%= active_report.id %> // <%= active_report_label %> // <%= active_report.status.to_s.tr("_", " ") %></b>
+                <span>Thumper building documents</span>
+              </div>
+              <em data-report-card-timer-label><%= active_report.created_at ? "#{time_ago_in_words(active_report.created_at)} running" : "running" %></em>
+            </div>
+          <% end %>
+
+          <% if bulk_run_id.present? %>
+            <div class="comms-command-report-timer comms-command-report-timer--bulk">
+              <div>
+                <b>
+                  <%= bulk_run_label %>
+                  <% if bulk_run_position.present? && bulk_run_stage_count.present? %>
+                    // <%= number_with_delimiter(bulk_run_position.to_i) %>/<%= number_with_delimiter(bulk_run_stage_count.to_i) %>
+                  <% end %>
+                  // BLOCK #<%= stage.id %>
+                </b>
+                <span>
+                  Run <%= bulk_run_id.first(8) %>
+                  <% if bulk_run["page"].present? %>
+                    // page <%= bulk_run["page"] %>
+                  <% end %>
+                  <% if bulk_run["launch_cadence_label"].present? %>
+                    // pace <%= bulk_run["launch_cadence_label"] %>
+                  <% end %>
+                  <% if bulk_run["detail"].present? %>
+                    // <%= bulk_run["detail"] %>
+                  <% end %>
+                </span>
+              </div>
+              <em><%= bulk_run_status.to_s.presence&.upcase || "QUEUED" %></em>
+            </div>
+          <% end %>
+
+          <% contact_detail = [contact["title"], contact["record_type"], contact["reason"]].compact_blank.join(" // ") %>
+          <% phone_detail = phone["name"].presence || phone["reason"].presence || "CRM phone route" %>
+          <% email_detail = email["name"].presence || email["reason"].presence || "CRM email route" %>
+          <div class="comms-command-contact-grid" aria-label="Primary contact details">
+            <div class="comms-command-contact-field comms-command-contact-field--name">
+              <span>Contact</span>
+              <b title="<%= card_contact_label.presence || 'Contact needed' %>"><%= card_contact_label.presence || "contact needed" %></b>
+              <small title="<%= contact_detail %>"><%= contact_detail %></small>
+            </div>
+            <div class="comms-command-contact-field comms-command-contact-field--phone">
+              <span>Phone</span>
+              <b title="<%= phone["value"].presence || 'No phone' %>"><%= phone["value"].presence || "no phone" %></b>
+              <small title="<%= phone_detail %>"><%= phone_detail %></small>
+            </div>
+            <div class="comms-command-contact-field comms-command-contact-field--company">
+              <span>Company</span>
+              <b title="<%= card_company_label.presence || 'Company needed' %>"><%= card_company_label.presence || "company needed" %></b>
+              <small title="<%= bot_industry.presence || 'CRM company' %>"><%= bot_industry.presence || "CRM company" %></small>
+            </div>
+            <div class="comms-command-contact-field comms-command-contact-field--email">
+              <span>Email</span>
+              <b title="<%= email["value"].presence || 'No email' %>"><%= email["value"].presence || "no email" %></b>
+              <small title="<%= email_detail %>"><%= email_detail %></small>
+            </div>
+          </div>
+<div class="comms-command-actions">
+  <div class="comms-command-action-row comms-command-action-row--reports">
+  <% if comms_record.present? %>
+    <% if record_claimed_by_me %>
+  <%= button_to "👤", claim_deal_path(comms_record), method: :post,
+    form_class: "comms-command-inline-form",
+    class: "comms-command-icon-button comms-command-icon-button--claim-on",
+    title: "Unclaim lead",
+    aria: { label: "Unclaim #{stage_company_name(stage)}" },
+    data: { turbo_confirm: "Unclaim #{stage_company_name(stage)} from your AM queue?" } %>
+<% elsif record_claimed %>
+      <span class="comms-command-icon-button comms-command-icon-button--disabled" title="Claimed by <%= record_claim_label %>" aria-label="Claimed by <%= record_claim_label %>">🔒</span>
+    <% else %>
+      <%= button_to "🙋", claim_deal_path(comms_record), method: :post,
+        form_class: "comms-command-inline-form",
+        class: "comms-command-icon-button comms-command-icon-button--claim",
+        title: "Claim lead",
+        aria: { label: "Claim #{stage_company_name(stage)}" } %>
+    <% end %>
+
+    <details class="comms-command-details comms-command-details--media">
+      <summary class="comms-command-icon-button comms-command-icon-button--media" title="Media folder" aria-label="Media folder">
+        📁<span class="comms-command-icon-count"><%= media_attachments.size %></span>
+      </summary>
+      <div class="comms-command-mini-popover comms-command-mini-popover--media">
+        <div class="comms-command-windowbar">
+          <span></span><span></span><span></span>
+          <b>MEDIA // <%= stage_company_name(stage) %></b>
+          <button type="button" class="comms-command-mini-close" data-close-deal-flyout>X</button>
+        </div>
+        <p class="comms-command-mini-copy">Upload logos, photos, PDFs, notes, or campaign assets before running Thumper.</p>
+        <% if record_claimed_by_me %>
+          <form action="<%= upload_deal_media_path(comms_record) %>" method="post" enctype="multipart/form-data" class="comms-command-media-upload-form" data-turbo="false">
+            <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>" autocomplete="off">
+            <input type="file" name="deal_media[files][]" multiple accept="image/*,application/pdf,text/plain,.txt,.csv,.doc,.docx,.ppt,.pptx" class="comms-command-media-input">
+            <button type="submit" class="comms-command-media-upload-button">UPLOAD MEDIA</button>
+          </form>
+        <% else %>
+          <p class="comms-command-mini-warning">Claim this lead before uploading media.</p>
+        <% end %>
+        <div class="comms-command-media-list">
+          <% if media_attachments.any? %>
+            <% media_attachments.each do |attachment| %>
+              <div class="comms-command-media-item">
+                <% if attachment.blob.content_type.to_s.start_with?("image/") %>
+                  <%= image_tag url_for(attachment), alt: attachment.filename.to_s, loading: "lazy", class: "comms-command-media-thumb" %>
+                <% end %>
+                <b><%= attachment.filename %></b>
+                <small><%= number_to_human_size(attachment.blob.byte_size) %> // <%= attachment.created_at.strftime("%b %-d %l:%M %p") %></small>
+                <% if record_claimed_by_me %>
+                  <%= button_to "REMOVE", destroy_deal_media_path(comms_record, attachment), method: :delete,
+                    form_class: "comms-command-inline-form",
+                    class: "comms-command-media-remove",
+                    data: { turbo_confirm: "Remove #{attachment.filename}?" } %>
+                <% end %>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="comms-command-empty">No media uploaded yet.</p>
+          <% end %>
+        </div>
+      </div>
+    </details>
+
+    <% if record_claimed_by_me %>
+  <details class="comms-command-details rpt-lab-details" <%= "open" if params[:open_ai_lab_stage].to_s == stage.id.to_s %>>
+    <summary class="comms-command-icon-button comms-command-icon-button--run" title="Open Thumper AI LAB" aria-label="Open Thumper AI LAB">🏃</summary>
+    <div class="rpt-lab-backdrop" aria-hidden="true"></div>
+    <div class="deal-flyout deal-flyout--report rpt-lab-overlay" role="dialog" aria-modal="true" aria-label="Thumper report lab">
+      <form action="<%= queue_deal_report_path(comms_record) %>" method="post" class="rpt-lab-form" data-controller="rpt-builder report-timer" data-rpt-builder-client-count-value="<%= client_report_count %>" data-rpt-builder-am-count-value="<%= am_report_count %>" data-rpt-builder-copy-maker-count-value="<%= copy_maker_report_count %>" data-report-timer-deal-id-value="<%= comms_record.id %>" data-report-timer-report-count-value="<%= client_report_count %>" data-report-timer-status-url-value="<%= deal_report_status_path(comms_record) %>" data-report-timer-poll-interval-value="5000" data-report-timer-audience-value="client" data-action="change->rpt-builder#update keydown.esc@window->rpt-builder#close turbo:submit-start->rpt-builder#beforeSubmit turbo:submit-start->report-timer#start turbo:submit-end->report-timer#submitted">
+        <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>" autocomplete="off">
+        <div class="rpt-lab-header">
+          <div class="rpt-lab-clippy" role="button" tabindex="0" aria-label="Thumper AI Lab help" aria-describedby="comms_rpt_lab_clippy_help_<%= stage.id %>">
+            <%= image_tag "autos.png", alt: "Thumper AI Lab helper", class: "rpt-lab-clippy-image" %>
+            <span id="comms_rpt_lab_clippy_help_<%= stage.id %>" class="rpt-lab-clippy-bubble" role="tooltip">
+              <strong>Thumper AI LAB GUIDE</strong>
+              <span>CLIENT REPORT builds the buyer-facing strategy doc and Canva kit. AM REPORT builds internal notes, risks, and next actions. COPYWRITER builds ads, postcards, SMS/email copy, and COMM KIT batches.</span>
+              <span>LOCAL LLM PREP lets Qwen digest CRM, media, Fathom, weather, and fine-training context before the final writer. Turn it off for payload-only copy tests.</span>
+              <span>COPY POST PAYLOAD chooses the final writer for COPY mode. The Voice Editor tunes the source text Thumper retrieves across reports, /ask, and SMS.</span>
+            </span>
+          </div>
+          <div>
+            <p class="rpt-lab-kicker"><span>WIZWIKI // Thumper</span></p>
+            <h4 class="rpt-lab-title">AI LAB</h4>
+            <p class="rpt-lab-subtitle">🎮 PICK MODES. TUNE MODELS. CREATE.</p>
+            <p class="rpt-lab-voice-engine">THUMPER VON AUTOS</p>
+          </div>
+          <div class="rpt-lab-actions">
+            <% if current_user.primary_membership&.admin? %>
+              <div class="rpt-lab-voice-editor-dock">
+                <%= link_to "VOICE EDITOR", "/train?voice_editor=1", class: "rpt-lab-voice-editor-link", data: { turbo: false } %>
+              </div>
+            <% end %>
+            <button type="button" class="rpt-lab-close" data-action="rpt-builder#close">✕ CLOSE</button>
+          </div>
+        </div>
+
+        <div class="rpt-lab-screen">
+          <label for="report_audience_comms_<%= stage.id %>" class="rpt-lab-mode">
+            <span>MODES</span>
+            <select id="report_audience_comms_<%= stage.id %>" name="report_audience" class="deal-report-model-select rpt-lab-select" data-rpt-builder-target="audience" data-action="change->rpt-builder#update">
+              <option value="client">🤝 CLIENT REPORT</option>
+              <option value="am">🧭 AM REPORT</option>
+              <option value="copy_maker">✒️ COPY</option>
+            </select>
+          </label>
+          <label for="industry_strategy_lens_comms_<%= stage.id %>" class="rpt-lab-mode">
+            <span>INDUSTRY LENS</span>
+            <select id="industry_strategy_lens_comms_<%= stage.id %>" name="industry_strategy_lens" class="deal-report-model-select rpt-lab-select">
+              <% industry_strategy_lens_options.each do |option| %>
+                <option value="<%= option[:value] %>"><%= option[:label] %></option>
+              <% end %>
+            </select>
+          </label>
+          <div class="rpt-lab-copy-dock">
+            <label for="copy_maker_cloud_provider_comms_<%= stage.id %>" class="rpt-lab-cloud-control" data-rpt-builder-target="cloudDock" hidden>
+              <span>☁️ COPY POST PAYLOAD</span>
+              <select id="copy_maker_cloud_provider_comms_<%= stage.id %>" name="copy_maker_cloud_provider" class="rpt-lab-cloud-select">
+                <option value="nvidia">🟩 NVIDIA Nemotron</option>
+                <option value="openai">⚡ OpenAI</option>
+                <option value="qwen">🧠 Qwen Local 8B</option>
+                <option value="qwen_9b">🧠 Qwen Local 9B MLX</option>
+                <option value="qwen_30b">🧠 Qwen Local 30B</option>
+                <option value="qwen_35b">🧠 Qwen Local 35B MLX</option>
+              </select>
+            </label>
+            <label for="report_context_prompt_comms_<%= stage.id %>" class="rpt-lab-copy-prompt">✒️ CONTEXT</label>
+            <textarea id="report_context_prompt_comms_<%= stage.id %>" name="report_context_prompt" rows="5" maxlength="1200" placeholder="Add direction for Thumper: offer angle, audience, tone, services to emphasize, things to avoid..." class="rpt-lab-copy-box"></textarea>
+          </div>
+          <% [["client", "🤝 Client-ready proposal."], ["am", "🧭 Internal AM brief."], ["copy_maker", "✒️ Local prep, selected cloud final."]].each do |audience, note| %>
+            <div data-rpt-builder-target="panel" data-rpt-builder-audience="<%= audience %>" class="rpt-lab-panel rpt-lab-panel--<%= audience == "copy_maker" ? "copy" : audience %>" <%= "hidden" unless audience == "client" %>>
+              <div class="rpt-lab-panel-selectors">
+                <label for="report_embedder_<%= audience %>_comms_<%= stage.id %>" class="rpt-lab-control">
+                  <span>1 // embedder <b>★ default</b></span>
+                  <select id="report_embedder_<%= audience %>_comms_<%= stage.id %>" name="report_embedder_model" class="deal-report-model-select">
+                    <% report_embedder_model_options.each do |label, model| %>
+                      <option value="<%= model %>" <%= "selected" if model == WizwikiSettings.report_embedder_model %>><%= label %></option>
+                    <% end %>
+                  </select>
+                </label>
+                <label for="report_local_model_<%= audience %>_comms_<%= stage.id %>" class="rpt-lab-control" data-rpt-builder-target="<%= audience == "copy_maker" ? "localPrepControl" : nil %>">
+                  <span>2 // local LLM <b>★ default</b></span>
+                  <select id="report_local_model_<%= audience %>_comms_<%= stage.id %>" name="report_local_model" class="deal-report-model-select">
+                    <% report_local_model_options.each do |label, model| %>
+                      <option value="<%= model %>" <%= "selected" if model == WizwikiSettings.default_report_lane[:report_local_model] %>><%= label %></option>
+                    <% end %>
+                  </select>
+                </label>
+                <label for="report_challenger_<%= audience %>_comms_<%= stage.id %>" class="rpt-lab-control">
+                  <span>3 // challenger <b>review</b></span>
+                  <select id="report_challenger_<%= audience %>_comms_<%= stage.id %>" name="report_challenger_model" class="deal-report-model-select">
+                    <% report_challenger_model_options.each do |label, model| %>
+                      <option value="<%= model %>" <%= "selected" if model == WizwikiSettings.default_challenger_model %>><%= label %></option>
+                    <% end %>
+                  </select>
+                </label>
+              </div>
+              <% if audience == "copy_maker" %>
+                <div class="rpt-lab-copy-switches" aria-label="Copy Maker switches">
+                  <label class="rpt-lab-switch"><input type="checkbox" name="copy_maker_comm_kit" value="1" checked data-rpt-builder-target="commKitToggle"><span><b>COMM KIT</b><em>3 texts + 2 friendly sales emails.</em></span></label>
+                  <div class="rpt-lab-switch rpt-lab-switch--direction" data-rpt-builder-target="commKitDirection">
+                    <span><b>COMM KIT DIRECTION</b><span class="mt-2 grid gap-2 sm:grid-cols-2"><label class="flex gap-2 border border-dotted border-fuchsia-200/40 bg-black/30 p-2"><input type="radio" name="copy_maker_comm_kit_direction" value="wizwiki_out" checked class="mt-1 accent-fuchsia-300"><span><strong class="text-fuchsia-100">WIZWIKI OUT</strong><br>WIZWIKI outreach to the business owner.</span></label><label class="flex gap-2 border border-dotted border-cyan-200/40 bg-black/30 p-2"><input type="radio" name="copy_maker_comm_kit_direction" value="client_out" class="mt-1 accent-cyan-300"><span><strong class="text-cyan-100">CLIENT OUT</strong><br>Client-branded campaign copy.</span></label></span></span>
+                  </div>
+                  <label class="rpt-lab-switch"><input type="checkbox" name="copy_maker_local_prep" value="1" checked data-rpt-builder-target="localPrepToggle"><span><b>LOCAL LLM PREP</b><em>Use selected Qwen model before final payload.</em></span></label>
+                </div>
+              <% else %>
+                <div class="rpt-lab-copy-switches">
+                  <label class="rpt-lab-switch"><input type="checkbox" name="report_preflight_scan" value="1"><span><b>👁️ SCAN</b><em>Read images first.</em></span></label>
+                  <label class="rpt-lab-switch"><input type="checkbox" name="report_post_review" value="1"><span><b>🧽 POLISH</b><em>Clean text pass.</em></span></label>
+                  <label class="rpt-lab-switch"><input type="checkbox" name="report_page_visual_qa" value="1"><span><b>📄 QA</b><em>Check pages.</em></span></label>
+                </div>
+              <% end %>
+              <p class="rpt-lab-panel-note"><%= note %></p>
+            </div>
+          <% end %>
+        </div>
+        <button type="submit" class="rpt-lab-create" data-report-timer-target="button">
+          <span data-report-timer-target="idle">▶ CREATE <b data-rpt-builder-target="buttonLabel">🤝 CLIENT</b></span>
+          <span data-report-timer-target="working" hidden>⏳ CREATE <b data-rpt-builder-target="workingLabel">🤝 CLIENT</b> <b data-report-timer-target="seconds">0s</b></span>
+        </button>
+      </form>
+    </div>
+  </details>
+<% else %>
+  <span class="comms-command-icon-button comms-command-icon-button--disabled" title="Claim this lead before opening AI LAB" aria-label="Claim before RUN">🏃</span>
+<% end %>
+
+    <% if report_artifacts.any? %>
+  <details class="comms-command-details report-kits-details">
+    <% doc_button_classes = ["comms-command-icon-button", "comms-command-icon-button--doc", ("comms-command-icon-button--doc-working" if active_report.present?), ("comms-command-icon-button--doc-ready" if docs_ready_report.present?)].compact.join(" ") %>
+    <% doc_button_title = docs_ready_report.present? ? "Documents ready: open report kits" : active_report.present? ? "Report running: open report status" : "Open documents and report kits" %>
+    <summary class="<%= doc_button_classes %>" title="<%= doc_button_title %>" aria-label="<%= doc_button_title %>">📄<span class="comms-command-icon-count"><%= docs_ready_count %></span></summary>
+    <div class="report-kits-backdrop" aria-hidden="true" data-close-deal-flyout></div>
+    <div class="deal-flyout deal-flyout--reports report-kits-overlay" role="dialog" aria-modal="true" aria-label="Created documents and report kits">
+      <div class="report-kits-header">
+        <div>
+          <p class="report-kits-kicker">documents // report kits</p>
+          <h4 class="report-kits-title"><%= stage_company_name(stage) %></h4>
+          <p class="report-kits-subtitle">Open documents, download Canva assets, or review recent report outputs without leaving LEAD GEN.</p>
+        </div>
+        <div class="report-kits-header-actions"><span class="report-kits-ready"><%= docs_ready_count %> ready</span><button type="button" class="report-kits-close border border-dotted border-white/50 bg-black px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.16em] text-white hover:bg-white hover:text-black" data-close-deal-flyout>close</button></div>
+      </div>
+      <div class="report-kits-list">
+        <% report_artifacts.each do |artifact| %>
+          <div class="report-kit-card">
+            <p class="report-kit-eyebrow"><%= artifact.artifact_type.humanize %> // artifact #<%= artifact.id %> // <%= artifact.status %></p>
+            <p class="report-kit-title"><%= artifact.title.presence || stage_company_name(stage) %></p>
+            <p class="report-kit-meta"><%= artifact.created_at.strftime("%b %-d %l:%M %p") %> // <%= artifact.user&.display_name || "system" %></p>
+            <div class="report-kit-actions report-kit-actions--primary">
+              <%= link_to "OPEN DOCX", preview_deal_report_path(artifact), target: "_blank", rel: "noopener", data: { turbo: false }, class: "report-kit-action report-kit-action--docx" %>
+              <% if artifact.status.to_s.in?(%w[canva_kit_ready canva_output_ready]) %>
+                <%= link_to "KIT ZIP", download_deal_report_canva_kit_path(artifact), data: { turbo: false }, class: "report-kit-action report-kit-action--kit" %>
+              <% end %>
+              <% if artifact.status.to_s == "canva_output_ready" %>
+                <%= link_to "OUTPUT ZIP", download_deal_report_canva_output_path(artifact), data: { turbo: false }, class: "report-kit-action report-kit-action--output" %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </details>
+<% else %>
+  <span class="comms-command-icon-button comms-command-icon-button--disabled comms-command-icon-button--doc-empty" title="No report document yet" aria-label="No report document yet">📄<span class="comms-command-icon-count">0</span></span>
+<% end %>
+
+    <% attn_button_classes = ["comms-command-icon-button", "comms-command-icon-button--attn", ("comms-command-icon-button--attn-active" if sms_attn_active), ("comms-command-icon-button--attn-idle" unless sms_attn_active)].compact.join(" ") %>
+    <% attn_button_title = if sms_callblock
+      "Thumper callblock: #{sms_callblock_reason}. Open SMS thread."
+    elsif sms_attn_active
+      "Client replied. Open SMS thread."
+    else
+      "Open SMS thread. No unanswered client reply."
+    end %>
+    <%= link_to comms_command_path(open_sms_stage: stage.id, anchor: "stage-#{stage.id}"),
+      class: attn_button_classes,
+      title: attn_button_title,
+      aria: { label: "#{attn_button_title} #{stage_company_name(stage)}" },
+      data: { turbo: false, comms_attn_started_at: (sms_attn_started_at if sms_attn_active) } do %>
+      <span class="comms-command-attn-bulb" aria-hidden="true">💡</span>
+      <span class="comms-command-attn-label"><%= sms_callblock ? "BLOCK" : "ATTN" %></span>
+      <span class="comms-command-attn-timer" <%= "data-comms-attn-timer" if sms_attn_active %>>00:00</span>
+    <% end %>
+
+  <% end %>
+  </div>
+  <div class="comms-command-action-row comms-command-action-row--channels">
+  <% open_sms_stage_id = @comms_open_sms_stage_id.presence || params[:open_sms_stage].to_s %>
+            <% sms_station_open = open_sms_stage_id.to_s == stage.id.to_s %>
+            <% email_station_open = params[:open_email_stage].to_s == stage.id.to_s %>
+            <details class="comms-command-details" <%= "open" if sms_station_open %>>
+<summary class="comms-command-icon-button comms-command-icon-button--sms" title="Open SMS bot" aria-label="Open SMS bot"><%= link_to "💬", comms_command_path(open_sms_stage: stage.id, anchor: "stage-#{stage.id}"), class: "comms-command-icon-button-link", data: { turbo: false }, aria: { label: "Open SMS bot" } %></summary>
+	              <% if sms_station_open %>
+	              <div class="comms-command-communicator comms-command-communicator--phone">
+	                <div class="comms-command-windowbar">
+	                  <span class="comms-command-windowbar-phone" aria-hidden="true">📱</span>
+	                  <b>Thumper SMS // <%= phone["value"].presence || "NO NUMBER" %></b>
+	                  <div class="comms-command-model-controls">
+                      <% active_sms_runtime_model = comms_runtime_value.call(stage_sms_writer_model(stage)) %>
+                      <div class="comms-command-warp-toggle comms-command-warp-toggle--header" role="group" aria-label="SMS writer runtime">
+                        <% comms_runtime_toggle_options.each do |label, value| %>
+                          <% checked = active_sms_runtime_model == value %>
+                          <% runtime_configured = comms_runtime_configured.call(value) %>
+                          <% runtime_actual_model = comms_runtime_actual_model.call(value) %>
+                          <button
+                            type="button"
+                            class="comms-command-warp-button <%= 'is-active' if checked %> <%= 'is-unavailable' unless runtime_configured %>"
+                            data-sms-runtime-model="<%= value %>"
+                            aria-pressed="<%= checked %>"
+                            aria-label="<%= "#{label}, #{runtime_actual_model}#{', endpoint setup required' unless runtime_configured}" %>"
+                            title="<%= "#{label}: #{runtime_actual_model}#{' (endpoint setup required)' unless runtime_configured}" %>">
+                            <span class="comms-command-warp-label"><%= label %></span>
+                            <small class="comms-command-warp-model"><%= comms_runtime_model_label.call(value) %><%= " / SETUP" unless runtime_configured %></small>
+                          </button>
+                        <% end %>
+                      </div>
+	                    <label class="comms-command-challenger-control comms-command-challenger-control--header comms-command-warp-hidden-select">
+	                      <span>MODEL</span>
+	                      <%= select_tag :sms_writer_model,
+	                        options_for_select(comms_sms_writer_model_options, stage_sms_writer_model(stage)),
+	                        class: "comms-command-challenger-select",
+	                        data: {
+	                          sms_writer_select: true,
+	                          sms_writer_stage: stage.id,
+	                          sms_writer_model_url: update_comms_sms_writer_model_path(stage)
+	                        } %>
+	                    </label>
+	                    <label class="comms-command-challenger-control comms-command-challenger-control--header">
+	                      <span>RAG</span>
+	                      <%= select_tag :rag_profile,
+	                        options_for_select(comms_rag_profile_options, stage_rag_profile(stage)),
+	                        class: "comms-command-challenger-select",
+	                        title: "Knowledge base used by this call block",
+	                        data: {
+	                          rag_profile_select: true,
+	                          rag_profile_stage: stage.id,
+	                          rag_profile_url: update_comms_rag_profile_path(stage)
+	                        } %>
+	                    </label>
+	                  </div>
+		                  <%= button_tag "X", type: "button", class: "comms-command-overlay-close", data: { action: "click->comms-station#closeOverlay" }, aria: { label: "Close SMS overlay" } %>
+	                </div>
+	                <div class="comms-command-phone-face">
+	                  <div class="comms-command-phone-top">
+	                    <span class="comms-command-phone-status">
+	                      <%= sms_callblock ? "Thumper callblock" : (sms_listener_active ? "Listening" : "Send to start listener") %> // Autopilot <%= sms_autopilot_enabled ? "on" : "off" %>
+	                    </span>
+	                    <div class="comms-command-phone-actions">
+	                      <% overlay_autopilot_confirm = sms_autopilot_enabled ? "Pause Thumper autopilot for this SMS thread?" : "Start Thumper autopilot listening for this SMS thread? This will not send the current NEXT TEXT. New inbound SMS can trigger automation; use SEND SMS for a reviewed manual reply or FULL AUTO from the board for automatic launch." %>
+                        <% bot_bridge_first_stop_text = "My human half added an ignore 1 STOP so we can connect and train together if you like" %>
+                        <% bot_bridge_first_stop_onchange = "if(this.checked){const root=this.closest('.comms-command-communicator')||document;const field=root.querySelector('textarea[name=\"sms_body\"]');const body=#{bot_bridge_first_stop_text.to_json};if(field){field.value=body;field.dataset.thumperDraftKey=body;field.dispatchEvent(new Event('input',{bubbles:true}));field.dispatchEvent(new Event('change',{bubbles:true}));}}" %>
+	                        <%= form_with url: toggle_comms_autopilot_path(stage), method: :patch, class: "comms-command-autopilot-form", data: { comms_confirm_message: overlay_autopilot_confirm, turbo_confirm: overlay_autopilot_confirm }, onsubmit: comms_confirm_onsubmit_js do %>
+	                          <%= hidden_field_tag :enabled, sms_autopilot_enabled ? "0" : "1" %>
+	                          <%= hidden_field_tag :sms_writer_model, stage_sms_writer_model(stage), data: { sms_writer_stage: stage.id } %>
+                            <% unless sms_autopilot_enabled %>
+                              <% ignore_first_stop_checked = ActiveModel::Type::Boolean.new.cast(stage.metadata.to_h["sms_autopilot_ignore_first_stop_for_bot_bridge"]) && stage.metadata.to_h["sms_autopilot_ignore_first_stop_consumed_at"].blank? %>
+                              <label class="comms-command-bot-bridge-option" title="Bot bridge only: consume one exact STOP-style first inbound without marking the customer do-not-contact.">
+                                <%= check_box_tag :ignore_first_stop_for_bot_bridge, "1", ignore_first_stop_checked, disabled: sms_do_not_contact || sms_autopilot_complete, data: { action: "change->comms-station#applyBotBridgeStopText", bot_bridge_stop_text: bot_bridge_first_stop_text }, onchange: bot_bridge_first_stop_onchange %>
+                                <span><b>IGNORE FIRST STOP</b><em>Bot bridge only.</em></span>
+                              </label>
+                            <% end %>
+	                        <%= submit_tag(sms_do_not_contact ? "DO NOT CONTACT" : (sms_autopilot_complete ? "✓ COMPLETE" : (sms_autopilot_enabled ? "✈️ AUTOPILOT RUNNING" : "✈️ START AUTOPILOT")), disabled: sms_do_not_contact || sms_autopilot_complete, class: "comms-command-autopilot-button #{'comms-command-autopilot-button--on' if sms_autopilot_enabled} #{'comms-command-autopilot-button--complete' if sms_autopilot_complete} #{'comms-command-autopilot-button--blocked' if sms_do_not_contact}", data: { comms_confirm_message: overlay_autopilot_confirm, turbo_confirm: overlay_autopilot_confirm }) %>
+	                      <% end %>
+	                      <% overlay_copilot_confirm = "Ask COPILOT to draft the next text for human approval? It will not send SMS." %>
+	                        <%= form_with url: copilot_comms_sms_path(stage), method: :post, class: "comms-command-autopilot-form comms-command-copilot-form", data: { comms_confirm_message: overlay_copilot_confirm, turbo_confirm: overlay_copilot_confirm }, onsubmit: comms_confirm_onsubmit_js do %>
+	                          <%= hidden_field_tag :sms_writer_model, stage_sms_writer_model(stage), data: { sms_writer_stage: stage.id } %>
+	                        <%= submit_tag(sms_do_not_contact ? "DO NOT CONTACT" : "COPILOT DRAFT", disabled: sms_do_not_contact, class: "comms-command-autopilot-button comms-command-autopilot-button--copilot #{'comms-command-autopilot-button--blocked' if sms_do_not_contact}", data: { comms_confirm_message: overlay_copilot_confirm, turbo_confirm: overlay_copilot_confirm }) %>
+	                      <% end %>
+	                      <% overlay_reset_confirm = "Reset Thumper conversation state for this SMS thread and draft a fresh NEXT TEXT for manual approval? No SMS will be sent." %>
+	                        <%= form_with url: reset_comms_sms_path(stage), method: :post, class: "comms-command-autopilot-form comms-command-reset-form", data: { comms_confirm_message: overlay_reset_confirm, turbo_confirm: overlay_reset_confirm }, onsubmit: comms_confirm_onsubmit_js do %>
+	                          <%= hidden_field_tag :sms_writer_model, stage_sms_writer_model(stage), data: { sms_writer_stage: stage.id } %>
+	                        <%= submit_tag(sms_do_not_contact ? "DO NOT CONTACT" : "RESET CONVO", disabled: sms_do_not_contact, class: "comms-command-autopilot-button comms-command-autopilot-button--reset #{'comms-command-autopilot-button--blocked' if sms_do_not_contact}", data: { comms_confirm_message: overlay_reset_confirm, turbo_confirm: overlay_reset_confirm }) %>
+	                      <% end %>
+	                    </div>
+                  </div>
+                  <% if sms_do_not_contact %>
+                    <div class="comms-command-do-not-contact-banner">
+                      <b>DO NOT CONTACT</b>
+                      <span>Customer asked us to stop messaging. Autopilot and SMS sending are locked.</span>
+                    </div>
+                  <% end %>
+                  <% if sms_callblock %>
+                    <div class="comms-command-callblock-banner">
+                      <b>Thumper CALLBLOCK</b>
+                      <span><%= sms_callblock_reason %></span>
+                    </div>
+                  <% end %>
+                  <div class="comms-command-phone-screen">
+                    <div class="comms-command-bot-grid">
+                      <div class="comms-command-processing-strip">
+                        <% if processing_code.present? %>
+                          <b>PROCESSING CODE // <%= processing_code %></b>
+                        <% else %>
+                          <b>DISCOVERY MODE</b>
+                        <% end %>
+                        <span><%= processing_summary %></span>
+                        <div class="comms-command-bot-state">
+                          <em><span>product</span><strong><%= bot_route_known ? bot_product_label : "needed" %></strong></em>
+                          <em class="<%= 'comms-command-bot-state-item--needed' unless fit_budget_known %>"><span>budget</span><strong><%= fit_budget_value.presence || "needed" %></strong></em>
+                          <em class="<%= 'comms-command-bot-state-item--needed' unless fit_size_known %>"><span>size</span><strong><%= fit_size_value.presence || "needed" %></strong></em>
+                          <em class="<%= 'comms-command-bot-state-item--needed' unless fit_artwork_known %>"><span>artwork</span><strong><%= fit_artwork_value.presence || "needed" %></strong></em>
+                          <em class="<%= 'comms-command-bot-state-item--needed' if bot_contact_name.blank? %>"><span>name</span><strong><%= bot_contact_name.presence || "needed" %></strong></em>
+                          <em class="<%= 'comms-command-bot-state-item--needed' if bot_company_name.blank? %>"><span>company</span><strong><%= bot_company_name.presence || "needed" %></strong></em>
+                          <em class="<%= 'comms-command-bot-state-item--needed' if bot_industry.blank? %>"><span>industry</span><strong><%= bot_industry.presence || "optional" %></strong></em>
+                          <em><span>email</span><strong><%= bot_email.presence || (bot_email_opt_in == "no" ? "declined" : "optional") %></strong></em>
+                          <em><span>proofs</span><strong><%= bot_proof_delivery.presence || "optional" %></strong></em>
+                          <em><span>pref</span><strong><%= bot_contact_preference.presence || "optional" %></strong></em>
+                          <em><span>follow-up</span><strong><%= bot_preferred_contact_window.presence || "optional" %></strong></em>
+                          <em class="<%= 'comms-command-bot-state-item--needed' unless link_sent %>"><span>link</span><strong><%= link_sent ? "sent" : "needed" %></strong></em>
+<em class="<%= 'comms-command-bot-state-item--needed' if bot_owner.blank? %>"><span>owner</span><strong><%= bot_contact_owner_status %></strong></em>
+
+                        </div>
+                      </div>
+                      <div class="comms-command-location-strip">
+                        <b>SHOPIFY</b>
+                        <% if stage.metadata.to_h["shopify_link"].present? %>
+                          <%= link_to "OPEN LINK", stage.metadata.to_h["shopify_link"], target: "_blank", rel: "noopener", class: "comms-command-location-link" %>
+                        <% else %>
+                          <span class="comms-command-location-link">link pending</span>
+                        <% end %>
+                        <div class="comms-command-draft-progress <%= 'comms-command-draft-progress--active is-live' if sms_progress_live %>" role="progressbar" aria-label="Thumper generating next SMS" <%= 'aria-busy="true"' if sms_progress_live %> data-comms-station-target="progress" data-autos-progress-started-at="<%= draft_progress_started_at %>" <%= 'data-autos-progress-active="true"' if sms_progress_live %>>
+                          <div class="comms-command-draft-progress-head">
+                            <strong>
+                              <span class="comms-command-draft-progress-idle">Thumper progress</span>
+                              <span class="comms-command-draft-progress-active" data-comms-station-target="progressMessage"><%= sms_progress_label %></span>
+                            </strong>
+                            <span>
+                              <span class="comms-command-draft-progress-active comms-command-draft-progress-timer" data-comms-station-target="progressTimer">00:00</span>
+                            </span>
+                          </div>
+                          <div class="comms-command-draft-progress-bar"><span></span></div>
+                          <% if sms_progress_signals.present? %>
+                            <ul class="comms-command-draft-progress-signals">
+                              <% sms_progress_signals.first(5).each do |signal| %>
+                                <% signal = signal.to_h %>
+                                <li><b><%= signal["label"] %></b><span><%= signal["value"] %></span></li>
+                              <% end %>
+                            </ul>
+                          <% end %>
+                        </div>
+                      </div>
+                      <section class="comms-command-square comms-command-square--history">
+                        <div class="comms-command-square-head">
+                          <b>CHAT HISTORY</b>
+                          <% if sms_thread_after_reset.present? %>
+                            <button type="button" class="comms-command-copy-button" data-action="click->comms-station#copyText" data-copy-thread-selector=".comms-command-chatlog">COPY THREAD</button>
+                          <% end %>
+                        </div>
+                        <div class="comms-command-chatlog">
+                          <% if sms_thread_after_reset.present? %>
+                            <% sms_thread_after_reset.each do |event| %>
+                              <% event = event.to_h %>
+                              <% inbound = event["direction"].to_s == "inbound" %>
+                              <% latest_unanswered_inbound = inbound && has_new_inbound && event["provider_message_id"].to_s == stage.metadata.to_h["sms_listener_last_inbound_sid"].to_s %>
+                              <% event_copy_line = [
+                                event["created_at"],
+                                event["direction"].presence || "outbound",
+                                event["status"],
+                                event["body"].to_s
+                              ].compact_blank.join(" // ") %>
+                              <div class="comms-command-bubble <%= event["status"] == "failed" ? "comms-command-bubble--failed" : (inbound ? "comms-command-bubble--inbound" : "comms-command-bubble--sent") %> <%= 'comms-command-bubble--new' if latest_unanswered_inbound %>" data-copy-line="<%= event_copy_line %>">
+                                <small>
+                                  <span><%= event["created_at"] %> // <%= event["direction"].presence || "outbound" %> // <%= event["status"] %></span>
+                                  <button type="button" class="comms-command-copy-button comms-command-copy-button--mini" data-action="click->comms-station#copyText" data-copy-text="<%= event["body"].to_s %>">COPY</button>
+                                </small>
+                                <% if event["processing_code"].present? || event["processing_label"].present? %>
+                                  <span class="comms-command-bubble-route">
+                                    ROUTE // <%= event["processing_code"].presence || processing_code %><%= event["processing_label"].present? ? " // #{event["processing_label"]}" : "" %>
+                                  </span>
+                                <% end %>
+                                <p data-copy-body><%= event["body"] %></p>
+                                <% draft_time_label = event["draft_time_label"].presence || (event["draft_time_seconds"].present? ? "#{event["draft_time_seconds"].to_f.round(1)}s" : nil) %>
+                                <% draft_model_label = event["draft_writer_model_label"].presence || event["draft_writer_model"].presence || event["draft_model"].presence %>
+                                <% draft_source_label = event["draft_source"].to_s == "thumper" ? "AI" : event["draft_source"].to_s.presence&.upcase %>
+                                <% if !inbound && (draft_time_label.present? || draft_model_label.present? || draft_source_label.present?) %>
+                                  <span class="comms-command-draft-time">
+                                    <%= [draft_source_label, draft_model_label, draft_time_label].compact_blank.join(" // ") %>
+                                  </span>
+                                <% end %>
+                                <% twilio_context = event["twilio_context"].respond_to?(:to_h) ? event["twilio_context"].to_h.compact_blank : {} %>
+                                <% if twilio_context.present? %>
+                                  <% twilio_labels = {
+                                    "num_media" => "media",
+                                    "from_state" => "from",
+                                    "sms_status" => "sms",
+                                    "to_country" => "to",
+                                    "api_version" => "api",
+                                    "from_country" => "country"
+                                  } %>
+                                  <% compact_twilio_context = twilio_context.slice(*twilio_labels.keys) %>
+                                  <small class="comms-command-twilio-meta">
+                                    <%= compact_twilio_context.presence.to_h.map { |key, value| "#{twilio_labels.fetch(key.to_s, key.to_s)}: #{value}" }.join(" // ") %>
+                                  </small>
+                                <% end %>
+                                <% if event["error"].present? %>
+                                  <em><%= event["error"] %></em>
+                                <% end %>
+                              </div>
+                            <% end %>
+                          <% else %>
+                            <p class="comms-command-empty">No SMS in this thread yet. Thumper has staged the first outbound text below.</p>
+                          <% end %>
+                          <span class="comms-command-chat-latest-end" aria-hidden="true"></span>
+                          <span class="comms-command-chat-end" aria-hidden="true"></span>
+                        </div>
+                      </section>
+
+                      <section class="comms-command-square comms-command-square--next">
+                        <div class="comms-command-square-head">
+                          <b>NEXT TEXT</b>
+                        </div>
+                        <% if sms_draft.present? %>
+                          <% sms_draft_source = sms_draft["draft_source"].to_s.presence || (sms_draft["provider"].to_s.include?("fallback") ? "fallback" : "thumper") %>
+                          <% sms_draft_pending = sms_draft_source == "pending" || ActiveModel::Type::Boolean.new.cast(sms_draft["pending"]) %>
+                          <% sms_draft_guardrail = sms_draft_source == "thumper_guardrail" %>
+                          <% sms_draft_fallback = sms_draft_source == "fallback" || sms_draft["provider"].to_s.include?("fallback") %>
+                          <% sms_draft_status_label = if sms_draft_pending
+                            "AI WORKING"
+                          elsif sms_draft_fallback
+                            "DEFAULT FALLBACK"
+                          elsif sms_draft_guardrail
+                            "Thumper GUARDRAIL"
+                          else
+                            "AI DRAFT READY"
+                          end %>
+                          <p class="comms-command-draft-status <%= sms_draft_fallback ? 'comms-command-draft-status--fallback' : 'comms-command-draft-status--success' %>">
+                            <b><%= sms_draft_status_label %></b>
+                            <span><%= sms_draft["writer_model_label"].presence || WizwikiSettings.sms_writer_model_label(stage_sms_writer_model(stage)) %></span>
+                          </p>
+                          <p class="comms-command-draft-meta">
+                            Draft // <%= sms_draft_source %> // <%= sms_draft["provider"].presence || "local" %> <%= sms_draft["model"].presence %>
+                            <% if sms_draft["writer_model_label"].present? || sms_draft["writer_model"].present? %>
+                              // writer <%= sms_draft["writer_model_label"].presence || sms_draft["writer_model"] %>
+                            <% end %>
+                            <% if sms_draft["draft_time_label"].present? || sms_draft["draft_time_seconds"].present? %>
+                              // <%= sms_draft["draft_time_label"].presence || "#{sms_draft["draft_time_seconds"].to_f.round(1)}s" %>
+                            <% end %>
+                          </p>
+                          <% if sms_draft["error"].present? && (sms_draft_fallback || sms_draft_guardrail) %>
+                            <p class="comms-command-bot-note">Writer fallback reason: <%= sms_draft["error"].to_s.truncate(180) %></p>
+                          <% end %>
+                        <% end %>
+                        <% sms_send_confirm = "Send this SMS to #{phone["value"].presence || "the selected number"}?" %>
+                        <% sms_send_inline_submit = "event.preventDefault();event.stopPropagation();if(event.stopImmediatePropagation){event.stopImmediatePropagation();}if(confirm(#{sms_send_confirm.to_json})){this.disabled=true;this.value='SENDING SMS...';this.form.submit();}return false;" %>
+                        <% sms_draft_sha1 = stage.metadata.to_h["comms_command_sms_draft_body"].to_s.squish.present? ? Digest::SHA1.hexdigest(stage.metadata.to_h["comms_command_sms_draft_body"].to_s) : nil %>
+                        <% sms_draft_key = Digest::SHA1.hexdigest([sms_body, sms_draft["created_at"], sms_draft["provider"], sms_draft["model"]].compact.join(":")) %>
+                        <%= form_with url: send_comms_sms_path(stage), method: :post, local: true, class: "comms-command-compose comms-command-compose--tight comms-command-send-sms-form", data: { turbo: false } do %>
+                          <%= hidden_field_tag :phone_number, phone["value"] %>
+                          <%= hidden_field_tag :sms_writer_model, stage_sms_writer_model(stage), data: { sms_writer_stage: stage.id } %>
+                          <%= hidden_field_tag :sms_draft_sha1, sms_draft_sha1 if sms_draft_sha1.present? %>
+                          <%= hidden_field_tag :sms_reply_generation, stage.metadata.to_h["sms_reply_generation"] if stage.metadata.to_h["sms_reply_generation"].present? %>
+                          <label>
+                            <span>Message</span>
+                            <%= text_area_tag :sms_body, sms_body, rows: 7, maxlength: 700, data: { thumper_draft_key: sms_draft_key } %>
+                          </label>
+                          <%= submit_tag(sms_sending_disabled ? "SMS SEND DISABLED" : (sms_autopilot_enabled ? "SEND SMS // AUTOPILOT ON" : "SEND SMS"), disabled: sms_sending_disabled, class: "comms-command-send comms-command-send--hot #{'comms-command-send--autopilot-armed' if sms_autopilot_enabled}", onclick: (sms_send_inline_submit unless sms_sending_disabled)) %>
+                        <% end %>
+                        <% if sms_sending_disabled %>
+                          <p class="comms-command-bot-note">Send lock is active. This station can draft and rewrite, but it will not send a live SMS.</p>
+                        <% end %>
+                      </section>
+
+	                      <section class="comms-command-square comms-command-square--prompt">
+	                        <div class="comms-command-square-head">
+	                          <b>GUIDE Thumper</b>
+	                        </div>
+		                        <%= form_with url: draft_comms_sms_path(stage), method: :post, class: "comms-command-compose comms-command-compose--tight", data: { turbo: false, action: "submit->comms-station#submit" } do %>
+	                          <%= hidden_field_tag :sms_writer_model, stage_sms_writer_model(stage), data: { sms_writer_stage: stage.id } %>
+	                          <label>
+	                            <span>Prompt</span>
+	                            <%= text_area_tag :sms_prompt, sms_prompt, rows: 5, maxlength: 700, placeholder: "Leave blank for a fresh next text, or guide Thumper: ask what they need, share a Shopify link, make it warmer." %>
+                          </label>
+	                          <%= submit_tag "GENERATE NEXT TEXT", class: "comms-command-send comms-command-send--rewrite" %>
+                        <% end %>
+                        <p class="comms-command-bot-note">
+                          Empty prompt builds a fresh next move from the chat. Filled prompt guides Thumper without sending automatically.
+                        </p>
+                      </section>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <% else %>
+              <div class="comms-command-communicator comms-command-communicator--phone comms-command-communicator--lazy" data-comms-lazy-station="true">
+                <div class="comms-command-windowbar">
+                  <span class="comms-command-windowbar-phone" aria-hidden="true">📱</span>
+                  <b>Thumper SMS // <%= phone["value"].presence || "NO NUMBER" %></b>
+                  <%= button_tag "X", type: "button", class: "comms-command-overlay-close", data: { action: "click->comms-station#closeOverlay" }, aria: { label: "Close SMS overlay" } %>
+                </div>
+                <div class="comms-command-phone-face comms-command-lazy-station">
+                  <div class="comms-command-lazy-loader" role="status" aria-live="polite">
+                    <b>Opening Thumper SMS station</b>
+                    <span>Loading the current thread...</span>
+                  </div>
+                </div>
+              </div>
+              <% end %>
+            </details>
+            <details class="comms-command-details" <%= "open" if params[:open_email_stage].to_s == stage.id.to_s %>>
+              <summary class="comms-command-icon-button comms-command-icon-button--email" title="Open email draft" aria-label="Open email draft">✉️</summary>
+              <div class="comms-command-communicator">
+                <div class="comms-command-windowbar">
+                  <span></span><span></span><span></span>
+                  <b>EMAIL // <%= email["value"].presence || "NO EMAIL" %></b>
+                  <%= button_tag "X", type: "button", class: "comms-command-overlay-close", data: { action: "click->comms-station#closeOverlay" }, aria: { label: "Close email overlay" } %>
+                </div>
+                <% if email_thread.present? %>
+                  <div class="comms-command-chatlog">
+                    <% email_thread.each do |event| %>
+                      <% event = event.to_h %>
+                      <div class="comms-command-bubble <%= event["status"] == "failed" ? "comms-command-bubble--failed" : "comms-command-bubble--sent" %>">
+                        <small><%= event["created_at"] %> // <%= event["status"] %></small>
+                        <p><b><%= event["subject"] %></b></p>
+                        <p><%= event["body"] %></p>
+                        <% if event["error"].present? %>
+                          <em><%= event["error"] %></em>
+                        <% end %>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+                <%= form_with url: draft_comms_email_path(stage), method: :post, class: "comms-command-compose comms-command-compose--tight", data: { turbo: false } do %>
+                  <label>
+                    <span>Prompt email</span>
+                    <%= text_area_tag :email_prompt, email_prompt, rows: 3, maxlength: 900, placeholder: "Tell Thumper what this email should do: recommend a product, answer a question, follow up from the SMS thread, or write a warmer intro using this account context..." %>
+                  </label>
+                  <%= submit_tag "PROMPT EMAIL", class: "comms-command-send" %>
+                <% end %>
+                <%= form_with url: send_comms_email_path(stage), method: :post, class: "comms-command-compose" do %>
+                  <label>
+                    <span>Send to email</span>
+                    <%= email_field_tag :email_to, email["value"], maxlength: 180, placeholder: "name@example.com", required: true %>
+                  </label>
+                  <label>
+                    <span>Subject</span>
+                    <%= text_field_tag :email_subject, email_subject, maxlength: 160 %>
+                  </label>
+                  <label>
+                    <span>Approved email</span>
+                    <%= text_area_tag :email_body, email_body, rows: 8, maxlength: 3_000 %>
+                  </label>
+                  <%= submit_tag "SEND EMAIL", class: "comms-command-send", data: { turbo_confirm: "Send this email to #{email["value"].presence || "the selected recipient"}?" } %>
+                <% end %>
+              </div>
+            </details>
+<% autopilot_confirm = sms_autopilot_enabled ? "Pause Thumper autopilot for this SMS thread?" : "Start Thumper autopilot listening for this SMS thread? This will not send the current NEXT TEXT. Use FULL AUTO from the board for automatic launch." %>
+<%= button_to "✈️",
+  toggle_comms_autopilot_path(stage),
+  method: :patch,
+  params: { enabled: sms_autopilot_enabled ? "0" : "1", return_to_board: "1" },
+  form: { class: "comms-command-autopilot-icon-form", data: { comms_confirm_message: autopilot_confirm, turbo_confirm: autopilot_confirm }, onsubmit: comms_confirm_onsubmit_js },
+  class: "comms-command-icon-button comms-command-icon-button--autopilot #{'comms-command-icon-button--autopilot-on' if sms_autopilot_enabled} #{'comms-command-icon-button--autopilot-complete' if sms_autopilot_complete}",
+  disabled: sms_do_not_contact || sms_autopilot_complete,
+  title: sms_do_not_contact ? "Do not contact" : (sms_autopilot_complete ? "Autopilot complete" : (sms_autopilot_enabled ? "Pause Thumper autopilot" : "Start Thumper autopilot")),
+  aria: { label: sms_autopilot_enabled ? "Pause autopilot for #{stage_company_name(stage)}" : "Start autopilot for #{stage_company_name(stage)}" },
+  data: { comms_confirm_message: autopilot_confirm, turbo_confirm: autopilot_confirm } %>
+
+            <% sos_confirm = "Send this call to AM help and post to Owner Queue?" %>
+            <%= button_to "🆘", send_to_am_comms_path(stage), method: :patch,
+              params: { q: @comms_query.presence, status: @comms_status_filter.presence, reason: "manual_am_support" }.compact,
+              form: { class: "comms-command-inline-form", data: { comms_confirm_message: sos_confirm, turbo_confirm: sos_confirm }, onsubmit: comms_confirm_onsubmit_js },
+              class: "comms-command-icon-button comms-command-icon-button--am-help",
+              disabled: sms_do_not_contact,
+              title: "Send to AM help",
+              aria: { label: "Send #{stage_company_name(stage)} to AM help" },
+              data: { comms_confirm_message: sos_confirm, turbo_confirm: sos_confirm } %>
+
+	            <% comms_delete_allowed = deletable_comms_stage?(stage) %>
+	            <% comms_delete_confirm = "Delete this WIZWIKI COMMS block for #{stage_company_name(stage)} and purge its SMS/email history, generated reports, media, stored files, and vector memory? If this phone/email is added again it will start fresh. This cannot be undone." %>
+	            <% if comms_delete_allowed %>
+	              <%= button_to "🗑️",
+	                delete_comms_command_path(stage),
+	                method: :delete,
+	                params: { q: @comms_query.presence, status: @comms_status_filter.presence, page: @comms_page.presence }.compact,
+	                form_class: "comms-command-inline-form comms-command-remove-form comms-command-delete-form--confirmed",
+	                form: { data: { turbo: false, comms_delete_form: "true", comms_confirm_message: comms_delete_confirm } },
+	                class: "comms-command-icon-button comms-command-icon-button--delete",
+	                title: "Delete comms block",
+	                aria: { label: "Delete comms block for #{stage_company_name(stage)}" },
+	                data: { comms_confirm_message: comms_delete_confirm } %>
+	            <% else %>
+	              <%= button_tag "🗑️",
+	                type: "button",
+	                class: "comms-command-icon-button comms-command-icon-button--delete",
+	                disabled: true,
+	                title: "Protected source block",
+	                aria: { label: "Protected source block for #{stage_company_name(stage)}" } %>
+	            <% end %>
+            </div>	          </div>
+	          <div class="comms-command-stale-timer comms-command-stale-timer--<%= follow_up_timer[:state] %>"
+	               data-follow-up-timer
+	               data-follow-up-timer-state="<%= follow_up_timer[:state] %>"
+	               data-follow-up-timer-due-at="<%= follow_up_timer[:due_at] %>"
+	               data-follow-up-timer-prefix="<%= follow_up_timer[:state].to_s == 'capped' ? 'CAP RESETS' : (follow_up_timer[:state].to_s == 'outside_window' ? 'WINDOW IN' : 'STALE IN') %>"
+	               data-follow-up-timer-due-label="<%= follow_up_timer[:state].to_s == 'capped' ? 'DAILY CAP RESET' : (follow_up_timer[:state].to_s == 'outside_window' ? 'WINDOW OPEN' : 'STALE NOW') %>"
+	               title="<%= follow_up_timer[:detail] %>">
+	            <span data-follow-up-timer-label><%= follow_up_timer[:label] %></span>
+	          </div>
+	          <div class="comms-command-discovery-strip <%= 'comms-command-discovery-strip--complete' if discovery_complete %> <%= 'comms-command-discovery-strip--blocked' if sms_do_not_contact %>"
+               style="--discovery-percent: <%= discovery_percent %>%;"
+               role="progressbar"
+               aria-valuemin="0"
+               aria-valuemax="<%= discovery_total %>"
+               aria-valuenow="<%= discovery_done %>"
+               aria-label="<%= discovery_done %> of <%= discovery_total %> discovery questions complete">
+            <span class="comms-command-discovery-fill" style="width: <%= discovery_percent %>%"></span>
+            <span class="comms-command-discovery-count"><%= discovery_done %>/<%= discovery_total %> · <%= discovery_percent %>%</span>
+          </div>
+        </article>
+      <% end %>
+    <% else %>
+      <div class="comms-command-empty-state">
+        <h2>No staged comms yet</h2>
+        <p>Create a solo block, import a CSV, or wait for the Owner Queue and Storm Watch background lanes to refresh.</p>
+        <%= link_to "CREATE SOLO BLOCK", comms_command_path(anchor: "top"), class: "comms-command-profile-link" %>
+      </div>
+    <% end %>
+  </div>
+</section>

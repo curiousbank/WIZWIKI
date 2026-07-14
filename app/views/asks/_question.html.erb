@@ -1,0 +1,113 @@
+<% metadata = question.metadata.to_h %>
+<% voice_url = question.autos_voice_url %>
+<% model = metadata.dig("local_worker", "model") || metadata.dig("openai", "model") %>
+<% provider = metadata.dig("local_worker", "provider") || (metadata["openai"].present? ? "openai" : "local") %>
+<% analysis_links = Array(metadata["analysis_links"]).select { |link| link["url"].present? && link["label"].present? } %>
+<% question_cancelable = Autos::WorkerQueue.cancelable?(question) %>
+<% follow_up = metadata["follow_up"].to_h %>
+<% asks_follow_up = question.answer_ready? && question.answer.to_s.squish.match?(/[?]\z|\b(?:would you like|should i|do you want|want me to|want deeper|shall i|can i|should thumper|need me to)\b/i) %>
+<article id="<%= dom_id(question) %>"
+         class="wizwiki-answer-card <%= "is-answered" if question.answer_ready? %>"
+         data-autos-question-pending="<%= question.ask_refresh_pending? %>"
+         data-wizwiki-answer-ready="<%= question.answer_ready? ? "true" : "false" %>"
+         data-wizwiki-question-id="<%= question.id %>">
+  <div class="wizwiki-answer-meta">
+    <span><%= question.status %> // <%= question.created_at.in_time_zone("Eastern Time (US & Canada)").strftime("%b %-d %l:%M %p") %> ET</span>
+    <span><%= [provider, model].compact.join(" // ") %></span>
+  </div>
+
+  <div class="wizwiki-answer-prompt" data-wizwiki-copy-line="<%= ["customer", question.created_at.in_time_zone("Eastern Time (US & Canada)").strftime("%-l:%M:%S %p ET"), question.question.to_s].join(" // ") %>" data-wizwiki-copy-time="<%= question.created_at.iso8601 %>">
+    <div class="wizwiki-copy-row">
+      <span>YOU</span>
+      <button type="button" class="wizwiki-copy-button" data-wizwiki-copy-text="<%= question.question.to_s %>">COPY</button>
+    </div>
+    <p><%= question.question %></p>
+    <% if follow_up["to_question_id"].present? %>
+      <small>replying to Thumper question #<%= follow_up["to_question_id"] %> // <%= follow_up["response_intent"].to_s.presence || "follow-up" %></small>
+    <% end %>
+    <% if question.context.present? && follow_up["to_question_id"].present? %>
+      <small>context // linked follow-up memory</small>
+    <% elsif question.context.present? %>
+      <small>context // <%= question.context %></small>
+    <% end %>
+  </div>
+
+  <div class="wizwiki-answer-output">
+    <div class="wizwiki-answer-output-head">
+      <span>Thumper // answer stream</span>
+      <div class="wizwiki-answer-actions">
+      <% if question.answer.present? %>
+        <button type="button" class="wizwiki-copy-button" data-wizwiki-copy-text="<%= question.answer.to_s %>">COPY</button>
+      <% end %>
+      <% if question_cancelable %>
+        <%= button_to(
+          "cancel job",
+          cancel_ask_question_path(question),
+          method: :post,
+          class: "wizwiki-cancel-button",
+          form: { data: { turbo_confirm: "Cancel this Thumper ask job?" } }
+        ) %>
+      <% elsif question.answer_ready? %>
+        <% if voice_url.present? %>
+          <button type="button" class="wizwiki-ear" data-wizwiki-audio-play data-action="autos-talk#playAudio" data-autos-audio-url="<%= voice_url %>" aria-label="Hear Thumper answer">👂 EAR</button>
+          <audio data-wizwiki-audio preload="none" src="<%= voice_url %>" hidden></audio>
+        <% elsif question.autos_voice_pending? %>
+          <button type="button" class="wizwiki-ear is-warming" disabled>👂 warming</button>
+        <% end %>
+      <% end %>
+      </div>
+    </div>
+
+    <% if question.answer.present? %>
+      <p class="wizwiki-answer-text" data-wizwiki-answer-text data-wizwiki-copy-line="<%= ["thumper", question.updated_at.in_time_zone("Eastern Time (US & Canada)").strftime("%-l:%M:%S %p ET"), question.answer.to_s].join(" // ") %>" data-wizwiki-copy-time="<%= question.updated_at.iso8601 %>"><%= question.answer %></p>
+      <% if asks_follow_up %>
+        <div class="wizwiki-follow-up-actions" aria-label="Reply to this Thumper question">
+          <span>quick follow-up</span>
+          <div>
+            <%= form_with url: ask_path(format: :turbo_stream), method: :post, class: "wizwiki-follow-up-form" do %>
+              <%= hidden_field_tag "autos_question[question]", "yes" %>
+              <%= hidden_field_tag "autos_question[follow_up_to_id]", question.id %>
+              <%= hidden_field_tag "full_talk", "0" %>
+              <button type="submit" class="wizwiki-follow-up-button">YES</button>
+            <% end %>
+            <%= form_with url: ask_path(format: :turbo_stream), method: :post, class: "wizwiki-follow-up-form" do %>
+              <%= hidden_field_tag "autos_question[question]", "no" %>
+              <%= hidden_field_tag "autos_question[follow_up_to_id]", question.id %>
+              <%= hidden_field_tag "full_talk", "0" %>
+              <button type="submit" class="wizwiki-follow-up-button wizwiki-follow-up-button--no">NO</button>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+      <% if analysis_links.present? %>
+        <div class="wizwiki-answer-links">
+          <span>related cards</span>
+          <div>
+            <% analysis_links.each do |link| %>
+              <%= link_to link["url"], class: "wizwiki-answer-link" do %>
+                <b><%= link["record_type"].to_s.upcase %></b>
+                <%= link["label"] %>
+                <% if link["call_count"].to_i.positive? %>
+                  <small><%= pluralize(link["call_count"].to_i, "call") %></small>
+                <% end %>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    <% elsif question.status == "failed" %>
+      <p class="wizwiki-answer-wait">Answer engine hit a fault. Operator log saved.</p>
+    <% else %>
+      <div class="wizwiki-processing" data-wizwiki-processing-since="<%= question.created_at.iso8601 %>">
+        <div class="wizwiki-processing-head">
+          <span>▣</span><span>▣</span><span>▣</span>
+          <strong data-wizwiki-processing-timer>00:00</strong>
+        </div>
+        <p>Thumper listening. Thumper von AUTOS checks context first; Qwen answers; guarded retry handles repairs.</p>
+        <div class="wizwiki-processing-progress" aria-hidden="true">
+          <i data-wizwiki-processing-bar></i>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</article>

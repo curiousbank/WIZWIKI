@@ -1,0 +1,131 @@
+<% content_for :title, "Campaign CRM" %>
+
+<section class="autos-lightning-panel relative overflow-hidden border-2 border-dotted border-pink-500 bg-[#050505] px-5 py-12 text-[13px] text-white shadow-[0_0_0_1px_#f5f5f5,0_0_45px_rgba(45,212,191,0.28)] sm:px-8 sm:py-16 lg:min-h-[620px]" style="--autos-lightning-image: url('<%= wizwiki_cloudinary_ui_asset_url("autos", fallback: "autos.png", width: 1400, crop: :limit) %>');">
+  <div class="pointer-events-none absolute inset-0 z-[1] opacity-[0.14] [background-image:linear-gradient(#fff_1px,transparent_1px),linear-gradient(90deg,#fff_1px,transparent_1px)] [background-size:18px_18px]"></div>
+
+  <div class="relative z-[3] max-w-4xl">
+    <p class="font-mono text-sm font-black tracking-[0.42em] text-white sm:text-base">CAMPAIGN CRM // AUTOMATION</p>
+<h1 class="mt-5 font-mono text-5xl font-black leading-none tracking-[-0.08em] text-white sm:text-7xl lg:text-8xl">Campaign CRM</h1>
+<p class="wizwiki-hero-copy mt-5 max-w-3xl font-mono text-sm font-black uppercase tracking-[0.22em] sm:text-base">
+  BRAINPOWER FOR HUMAN-MACHINE AUTOMATION
+</p>
+<div class="wizwiki-hero-copy mt-8 max-w-3xl space-y-5 font-mono text-lg leading-8 sm:text-xl sm:leading-9">
+  <p>Welcome to Campaign CRM.</p>
+  <p>The campaign is already automated.</p>
+  <p>Now we’re giving it a brain.</p>
+  <p>Campaign CRM connects customers and employees inside one human-guided operating layer.</p>
+  <p>More context. More reason. More brainpower behind every ad.</p>
+  <p>A little lightning. A little lab-work. A lot of human approval.</p>
+</div>
+
+    <div class="mt-9 flex flex-wrap gap-4">
+      <%= link_to "EMPLOYEE ACCESS", access_path, class: "wizwiki-arcade-button border-2 border-dotted border-white/80 bg-pink-600 px-7 py-5 font-mono text-sm font-black uppercase tracking-[0.28em] text-white hover:bg-white hover:text-black sm:text-base" %>
+      <label for="quick-cart-toggle" class="wizwiki-arcade-button wizwiki-arcade-button-dark cursor-pointer border-2 border-dotted border-white/80 bg-black px-7 py-5 font-mono text-sm font-black uppercase tracking-[0.28em] text-white hover:bg-white hover:text-black sm:text-base">START CAMPAIGN</label>
+    </div>
+
+<div class="quick-cart-machine mt-10">
+  <input id="quick-cart-toggle" class="quick-cart-toggle" type="checkbox">
+  <label for="quick-cart-toggle" class="wizwiki-quick-cart inline-flex max-w-3xl cursor-pointer flex-wrap items-center gap-3 border-2 border-dotted px-6 py-5 font-mono text-left text-white sm:px-8 sm:py-6">
+    <span class="text-5xl leading-none sm:text-6xl">⚡</span>
+    <span>
+      <span class="block text-xl font-black uppercase tracking-[0.24em] text-pink-100 sm:text-2xl">SKIP THE LINE</span>
+      <span class="mt-2 block text-xs leading-6 text-zinc-100 sm:text-sm">Choose standard production or jump the queue with expedited pricing.</span>
+    </span>
+    <span class="text-5xl leading-none sm:text-6xl">🛒</span>
+  </label>
+
+  <div class="quick-cart-overlay fixed inset-0 z-50 grid place-items-center bg-black/82 p-4 backdrop-blur-sm">
+    <div class="quick-cart-modal relative w-full max-w-6xl border-2 border-dotted border-pink-400 bg-[#080204] p-5 text-white shadow-2xl shadow-pink-950/60 sm:p-6">
+      <label for="quick-cart-toggle" class="absolute right-3 top-3 z-20 cursor-pointer border border-dotted border-pink-300 bg-black/80 px-3 py-1 font-mono text-xs font-black text-pink-100 hover:bg-pink-600">CLOSE</label>
+
+      <div class="grid gap-5 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.4fr)]">
+        <div class="access-console-card relative min-h-[360px] overflow-hidden border-2 border-dotted border-teal-600 bg-black p-5 shadow-2xl shadow-teal-950/50 lg:min-h-full">
+          <%= wizwiki_cloudinary_ui_image_tag "autos", fallback: "autos.png", alt: "Campaign automation lab", class: "access-console-art pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover", cloudinary: { width: 1200, crop: :limit } %>
+          <div class="access-console-copy absolute inset-x-0 bottom-0 z-[3] p-5 sm:p-6">
+            <p class="mb-4 font-mono text-xs font-bold tracking-[0.38em] text-teal-400">production switch // checkout</p>
+            <h2 class="font-mono text-4xl font-black leading-none tracking-[-0.08em] text-white sm:text-5xl">Choose your queue.</h2>
+            <p class="mt-4 font-mono text-xs leading-6 text-zinc-200 sm:text-sm">
+              Same checkout. Different urgency. Standard saves a little. Skip the Line makes the calendar sweat.
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <p class="font-mono text-xs font-black uppercase tracking-[0.4em] text-pink-300">⚡ skip the line 🛒</p>
+          <h2 class="mt-3 font-mono text-3xl font-black uppercase tracking-[-0.06em] text-white sm:text-5xl">Campaign checkout</h2>
+          <p class="mt-3 max-w-2xl font-mono text-sm leading-6 text-zinc-200">Pick a package, choose your production speed, add callback details, then complete Square card checkout before the campaign app opens.</p>
+
+          <% unless @square_frontend_configured && @square_server_configured %>
+            <p class="quick-cart-warning mt-4 border border-dotted border-pink-400 bg-pink-950/35 px-4 py-3 font-mono text-xs font-black uppercase tracking-[0.16em] text-pink-100">Square credentials and package prices live in config/application.yml. Card checkout stays locked until those values are filled.</p>
+          <% end %>
+
+          <%= form_with url: quick_cart_path,
+                scope: :quick_cart,
+                class: "quick-cart-form mt-6 grid gap-5",
+                data: {
+                  controller: "square-checkout",
+                  action: "submit->square-checkout#submit",
+                  square_checkout_application_id_value: @square_application_id,
+                  square_checkout_location_id_value: @square_location_id,
+                  square_checkout_environment_value: @square_environment,
+                  square_checkout_configured_value: @square_frontend_configured
+                } do |form| %>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <label class="quick-speed-card cursor-pointer border-2 border-dotted border-pink-500 bg-black/80 p-4 font-mono hover:bg-pink-950/50">
+                <%= form.radio_button :production_speed, "standard", checked: true, class: "quick-speed-radio" %>
+                <span class="mt-2 block text-xl font-black uppercase tracking-[0.2em] text-pink-100">Save a Bit</span>
+                <span class="mt-3 block text-xs leading-5 text-zinc-300">If you don’t need these yesterday, let standard production breathe and keep a little more cash in the tank.</span>
+              </label>
+              <label class="quick-speed-card cursor-pointer border-2 border-dotted border-pink-500 bg-black/80 p-4 font-mono hover:bg-pink-950/50">
+                <%= form.radio_button :production_speed, "skip_line", class: "quick-speed-radio" %>
+                <span class="mt-2 block text-xl font-black uppercase tracking-[0.2em] text-pink-100">Skip the Line</span>
+                <span class="mt-3 block text-xs leading-5 text-zinc-300">If these production times are too slow, expedited pricing tells the crew to clear the bench. We got this.</span>
+              </label>
+            </div>
+
+            <div class="quick-speed-copy border-2 border-dotted border-pink-500 bg-black/70 p-4 font-mono text-xs leading-6 text-zinc-200">
+              <p class="quick-speed-panel quick-speed-panel--standard">No need for yesterday? Save a bit and let the designers work in a civilized timeline.</p>
+              <p class="quick-speed-panel quick-speed-panel--skip">Need this faster than the calendar recommends? Skip the Line costs more because the crew shifts into hold-our-beers mode.</p>
+            </div>
+
+            <div class="grid gap-3 md:grid-cols-3">
+              <% @quick_cart_packages.each_with_index do |package, index| %>
+                <label class="quick-package-card cursor-pointer border-2 border-dotted border-pink-500 bg-black/80 p-4 font-mono hover:bg-pink-950/50">
+                  <%= form.radio_button :package, package[:value], checked: index.zero?, class: "quick-package-radio" %>
+                  <span class="mt-2 block text-2xl font-black tracking-[0.2em] text-pink-100"><%= package[:name] %></span>
+                  <span class="mt-3 block text-sm font-black uppercase tracking-[0.18em] text-white"><%= package[:headline] %></span>
+                  <span class="mt-3 block text-xs leading-5 text-zinc-300"><%= package[:detail] %></span>
+                  <span class="quick-cart-price quick-cart-price--standard mt-4 border border-dotted border-pink-300 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-pink-100">save: <%= package[:standard_price] %></span>
+                  <span class="quick-cart-price quick-cart-price--skip mt-4 border border-dotted border-pink-300 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-pink-100">skip: <%= package[:skip_line_price] %></span>
+                </label>
+              <% end %>
+            </div>
+
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div>
+                <%= form.label :phone, "Phone number", class: "block font-mono text-xs font-black uppercase tracking-[0.2em] text-pink-300" %>
+                <%= form.telephone_field :phone, placeholder: "callback number", autocomplete: "tel", class: "mt-2 w-full border-2 border-dotted border-pink-500 bg-black px-4 py-4 font-mono text-white" %>
+              </div>
+              <div>
+                <%= form.label :email, "Email", class: "block font-mono text-xs font-black uppercase tracking-[0.2em] text-pink-300" %>
+                <%= form.email_field :email, placeholder: "design contact email", autocomplete: "email", class: "mt-2 w-full border-2 border-dotted border-pink-500 bg-black px-4 py-4 font-mono text-white" %>
+              </div>
+            </div>
+
+            <div class="quick-card-terminal border-2 border-dotted border-pink-500 bg-black/80 p-4">
+              <p class="font-mono text-xs font-black uppercase tracking-[0.24em] text-pink-300">Secure card terminal</p>
+              <div id="square-card-container" class="square-card-shell mt-3" data-square-checkout-target="card"></div>
+              <%= form.hidden_field :source_id, data: { square_checkout_target: "token" } %>
+              <p class="mt-3 font-mono text-xs leading-5 text-zinc-300" data-square-checkout-target="status">Card details are captured by Square. This app stores payment IDs, receipt data, card brand, and last 4 only.</p>
+            </div>
+
+            <%= form.submit "PAY + START CAMPAIGN", class: "wizwiki-arcade-button cursor-pointer border-2 border-dotted border-white/80 bg-pink-600 px-7 py-5 font-mono text-sm font-black uppercase tracking-[0.24em] text-white hover:bg-white hover:text-black sm:text-base", data: { square_checkout_target: "button" } %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  </div>
+</section>

@@ -1,0 +1,51 @@
+<% content_for :title, "#{@deal&.name || "WIZWIKI"} Report Preview" %>
+
+<main class="min-h-screen bg-[#080808] px-4 py-6 text-zinc-100 sm:px-8">
+  <section class="mx-auto max-w-5xl">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3 border border-dotted border-teal-400/50 bg-black p-4 shadow-[0_0_30px_rgba(45,212,191,0.16)]">
+      <div>
+        <p class="font-mono text-[10px] font-black uppercase tracking-[0.22em] text-teal-200">WIZWIKI browser preview</p>
+        <h1 class="mt-1 text-2xl font-black uppercase tracking-tight text-white sm:text-4xl"><%= @deal&.name || @artifact.title %></h1>
+        <p class="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-400">
+          <%= @artifact.status.to_s.tr("_", " ") %>
+          <% if @artifact.generated_at.present? %>// <%= @artifact.generated_at.in_time_zone("America/Detroit").strftime("%b %-d %Y %-I:%M %p Detroit") %><% end %>
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <%= link_to "BACK TO DEALS", deal_queue_path, class: "border border-dotted border-white/35 px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-zinc-200 hover:bg-white hover:text-black" %>
+        <%= link_to "RAW DOCX", @download_url, target: "_blank", rel: "noopener", data: { turbo: false }, class: "border border-dotted border-teal-200 bg-teal-950/30 px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-teal-100 hover:bg-teal-200 hover:text-black" %>
+      </div>
+    </div>
+
+    <article class="report-preview border border-white/10 bg-[#f8f7f2] p-5 text-[#101010] shadow-2xl sm:p-8">
+      <% if @preview_blocks.present? %>
+        <% @preview_blocks.each do |block| %>
+          <% if block[:type] == "heading" %>
+            <h2 class="mt-6 border-l-4 border-[#e10600] pl-3 text-xl font-black uppercase tracking-tight text-[#0b0b0b] first:mt-0 sm:text-3xl"><%= block[:text] %></h2>
+          <% elsif block[:type] == "table" %>
+            <div class="my-5 overflow-x-auto border border-[#111]">
+              <table class="min-w-full border-collapse text-left text-sm">
+                <tbody>
+                  <% block[:rows].each_with_index do |row, row_index| %>
+                    <tr class="<%= row_index.zero? ? "bg-[#0b0b0b] text-white" : "bg-white" %>">
+                      <% row.each do |cell| %>
+                        <td class="border border-[#222] px-3 py-2 align-top <%= row_index.zero? ? "font-black uppercase tracking-[0.08em]" : "text-[#161616]" %>"><%= cell %></td>
+                      <% end %>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <p class="mt-3 max-w-4xl text-base leading-7 text-[#222]"><%= block[:text] %></p>
+          <% end %>
+        <% end %>
+      <% else %>
+        <div class="border border-dotted border-teal-500 bg-teal-50 p-4">
+          <p class="font-mono text-xs font-black uppercase tracking-[0.16em] text-teal-900">Preview unavailable</p>
+          <p class="mt-2 text-sm leading-6 text-teal-950">The DOCX exists, but its visible text could not be extracted for browser preview. Use RAW DOCX to open the original file.</p>
+        </div>
+      <% end %>
+    </article>
+  </section>
+</main>

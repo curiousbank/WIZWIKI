@@ -1,0 +1,18 @@
+<% content_for :title, "Share ZIP with Thumper" %>
+
+<section class="comms-location-shell" data-controller="comms-location" data-comms-location-endpoint-value="<%= comms_location_path(params[:token]) %>">
+  <div class="comms-location-card">
+    <p class="comms-command-kicker">Thumper // permission check</p>
+    <h1>Share your ZIP</h1>
+    <p>
+      <%= @sender_name %> from WIZWIKI Marketing asked for your location so we can estimate the right local ZIP codes and shipping area for <%= @company_name %>.
+    </p>
+    <p class="comms-location-consent">
+      Your browser will ask before sharing location. We only save the approved coordinates, estimated address, ZIP when available, and this consent event.
+    </p>
+    <button type="button" class="comms-location-button" data-action="click->comms-location#capture">
+      SHARE LOCATION
+    </button>
+    <p class="comms-location-status" data-comms-location-target="status">Waiting for permission.</p>
+  </div>
+</section>

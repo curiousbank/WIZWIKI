@@ -1,0 +1,42 @@
+<% content_for :title, @design_order.label %>
+
+<section class="grid gap-6 lg:grid-cols-[1fr_340px]">
+  <article class="design-dark-panel border-2 border-dotted p-5">
+    <p class="font-mono text-xs uppercase tracking-[0.35em] text-teal-500">design order</p>
+    <h1 class="mt-2 font-mono text-4xl font-black tracking-[-0.06em]"><%= @design_order.item_name %></h1>
+    <p class="mt-3 font-mono text-sm text-zinc-400">Order <%= @design_order.order_number.presence || @design_order.id %> // imported from <%= link_to @design_order.design_report.display_title, design_report_path(@design_order.design_report), class: "underline" %></p>
+
+    <dl class="mt-6 grid gap-4 md:grid-cols-2">
+      <% [["Customer Email", @design_order.customer_email], ["Designer", @design_order.designer_name], ["Product", @design_order.product_name], ["Start Date", @design_order.start_date], ["Biz Days in Stage", @design_order.biz_days_in_stage], ["Biz Days Overall", @design_order.biz_days_overall], ["Revisions", @design_order.revisions], ["Status", @design_order.status]].each do |label, value| %>
+        <div class="design-dark-panel border border-dotted p-4">
+          <dt class="font-mono text-xs uppercase tracking-[0.2em] text-zinc-400"><%= label %></dt>
+          <dd class="mt-2 text-white"><%= value.presence || "empty" %></dd>
+        </div>
+      <% end %>
+    </dl>
+
+    <% if @design_order.monday_url.present? %>
+      <div class="mt-6 border border-dotted border-pink-400/50 bg-pink-950/10 p-4">
+        <p class="font-mono text-[10px] uppercase tracking-[0.22em] text-pink-300">monday board</p>
+        <%= link_to @design_order.monday_url, @design_order.monday_url, target: "_blank", rel: "noopener", class: "mt-2 block break-words text-sm text-zinc-100 underline" %>
+      </div>
+    <% end %>
+
+    <div class="mt-6 flex flex-wrap gap-3">
+      <%= link_to "Back to Design Queue", design_reports_path, class: "design-soft-button border border-dotted border-white/40 px-5 py-3 font-mono text-[11px] font-bold text-white" %>
+      <%= link_to "Source report", design_report_path(@design_order.design_report), class: "design-soft-button border border-dotted border-white/40 px-5 py-3 font-mono text-[11px] font-bold text-white" %>
+    </div>
+  </article>
+
+  <aside class="design-dark-panel border border-dotted p-5">
+    <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-teal-500">raw row</p>
+    <div class="mt-5 grid gap-3">
+      <% @design_order.raw_payload.to_h.each do |key, value| %>
+        <p class="border-b border-dotted border-white/20 pb-2 text-sm">
+          <span class="block font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500"><%= key %></span>
+          <strong class="break-words text-zinc-100"><%= value.presence || "empty" %></strong>
+        </p>
+      <% end %>
+    </div>
+  </aside>
+</section>

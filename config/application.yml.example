@@ -1,0 +1,66 @@
+# Copy this file to config/application.yml on the server and fill in live values.
+# config/application.yml is intentionally gitignored because it may contain secrets.
+#
+production:
+  cloudinary:
+    cloud_name: "YOUR_CLOUDINARY_CLOUD_NAME"
+    api_key: "YOUR_CLOUDINARY_API_KEY"
+    api_secret: "YOUR_CLOUDINARY_API_SECRET"
+    folder: "wizwiki"
+  openai:
+    api_key: "YOUR_OPENAI_API_KEY"
+    model: "gpt-5.4"
+    reasoning_effort: "xhigh"
+    max_context_chars: 14000
+    max_output_tokens: 4000
+    daily_token_budget: 100000
+  square:
+    mode: production
+    application_id: "YOUR_SQUARE_APPLICATION_ID"
+    location_id: "YOUR_SQUARE_LOCATION_ID"
+    access_token: "YOUR_SQUARE_ACCESS_TOKEN"
+    campaign_url: "https://app.example.invalid"
+    currency: "USD"
+    skip_line_multiplier: 1.5
+    quick_cart_packages:
+      STARTER:
+        amount_cents: 0
+        label: "Designer callback"
+      PRIORITY:
+        amount_cents: 0
+        label: "Priority design lane"
+      FULL_LAUNCH:
+        amount_cents: 0
+        label: "Full launch lane"
+
+development:
+  cloudinary:
+    cloud_name: "YOUR_CLOUDINARY_CLOUD_NAME"
+    api_key: "YOUR_CLOUDINARY_API_KEY"
+    api_secret: "YOUR_CLOUDINARY_API_SECRET"
+    folder: "wizwiki"
+  openai:
+    api_key: "YOUR_OPENAI_API_KEY"
+    model: "gpt-5.4"
+    reasoning_effort: "xhigh"
+    max_context_chars: 14000
+    max_output_tokens: 4000
+    daily_token_budget: 100000
+  square:
+    mode: sandbox
+    application_id: "YOUR_SANDBOX_APPLICATION_ID"
+    location_id: "YOUR_SANDBOX_LOCATION_ID"
+    access_token: "YOUR_SANDBOX_ACCESS_TOKEN"
+    campaign_url: "https://app.example.invalid"
+    currency: "USD"
+    skip_line_multiplier: 1.5
+    quick_cart_packages:
+      STARTER:
+        amount_cents: 0
+        label: "Designer callback"
+      PRIORITY:
+        amount_cents: 0
+        label: "Priority design lane"
+      FULL_LAUNCH:
+        amount_cents: 0
+        label: "Full launch lane"

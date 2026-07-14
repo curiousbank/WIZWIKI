@@ -1,0 +1,6 @@
+<%= turbo_stream.remove "autos_questions_empty" %>
+<%= turbo_stream.prepend "autos_questions", partial: "asks/question", locals: { question: @autos_question } %>
+<%= turbo_stream.replace "wizwiki_usage_review", partial: "asks/usage_review", locals: { usage_review: @usage_review } %>
+<%= turbo_stream.update "autos_question_form" do %>
+  <%= render "asks/form", autos_question: AutosQuestion.new, ask_autopilot_test: @ask_autopilot_test %>
+<% end %>

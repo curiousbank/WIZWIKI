@@ -1,0 +1,55 @@
+The Fathom Brain 🧠 Google Doc is ready
+
+Hello Thumper and company.
+
+The Fathom Brain synced <%= @result["call_count"].to_i %> Fathom call(s) for <%= @date.strftime("%B %-d, %Y") %>.
+The raw call records are stored in WIZWIKI and the call chunks were processed for Qwen pgvector memory before this digest was sent.
+
+Google Doc:
+<%= @google_doc["name"].presence || "Thumper Fathom Training Digest" %>
+<%= @google_doc["webViewLink"].presence || "Google returned no view link. Check Drive for the created file." %>
+
+<% if @operations_note.present? %>
+Operations note
+---------------
+<%= @operations_note %>
+
+<% end %>
+Daily readout
+-------------
+This digest is meant to be skimmable first and archival second. Start with the call board below, open the recordings that matter, then use the Google Doc when you need the full training record.
+
+Call replay board
+-----------------
+<% if @call_cards.present? %>
+<% @call_cards.each_with_index do |call, index| %>
+<%= index + 1 %>. <%= call[:title] %>
+<% if call[:time].present? %>Recorded: <%= call[:time] %>
+<% end %><% if call[:recorded_by].present? %>Recorded by: <%= call[:recorded_by] %>
+<% end %><% if call[:people].present? %>People: <%= call[:people] %>
+<% end %>Summary: <%= call[:summary] %>
+<% if call[:highlights].present? %>Highlight: <%= call[:highlights] %>
+<% end %><% if call[:action_items].present? %>Action items: <%= call[:action_items] %>
+<% end %><% if call[:primary_url].present? %>Fathom recording: <%= call[:primary_url] %>
+<% end %><% if call[:meeting_url].present? %>Meeting link: <%= call[:meeting_url] %>
+<% end %>
+---
+<% end %>
+<% else %>
+No call summaries were available in this digest.
+<% end %>
+
+Stats
+-----
+Created: <%= @result["created"].to_i %>
+Updated: <%= @result["updated"].to_i %>
+Unchanged: <%= @result["unchanged"].to_i %>
+Errors: <%= @result["errors"].to_i %>
+Training time: <%= @duration_label %>
+Vector chunks embedded: <%= @embedding_status["embedded"].to_i %>/<%= @embedding_status["chunk_count"].to_i %>
+Embedding model: <%= @embedding_status["embedding_model"].presence || "not recorded" %>
+
+<%= render "dojo_scrolls" %>
+
+From,
+The Fathom Brain 🧠

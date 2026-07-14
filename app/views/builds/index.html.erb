@@ -1,0 +1,75 @@
+<% content_for :title, "Build" %>
+
+<section class="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+  <div class="border-2 border-dotted border-teal-600 bg-black p-6">
+    <p class="font-mono text-xs font-black uppercase tracking-[0.35em] text-teal-500">build // staged changes</p>
+    <h1 class="mt-3 font-mono text-4xl font-black tracking-[-0.06em] text-white">Stage a platform change.</h1>
+    <p class="mt-4 font-mono text-sm leading-7 text-zinc-300">
+      Build now sends the request through Thumper for a read-only staged brief. Train stays static memory only. Nothing ships until an approved operator does the work.
+    </p>
+    <p class="mt-4 border border-dotted border-white/30 bg-white/5 p-3 font-mono text-xs leading-6 text-zinc-300">
+      Safety: Thumper can write the build brief into this request only. It cannot edit files, run commands, deploy, or change the app.
+    </p>
+
+    <%= form_with model: @build_request, url: build_path, class: "mt-7 grid gap-5", data: { controller: "autos-chat", action: "turbo:submit-start->autos-chat#start turbo:submit-end->autos-chat#stop" } do |form| %>
+      <div>
+        <%= form.label :title, "Build title", class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+        <%= form.text_field :title, required: true, class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+      </div>
+
+      <div>
+        <%= form.label :target_area, "Target area", class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+        <%= form.select :target_area, BuildRequest::TARGET_AREAS, {}, class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+      </div>
+
+      <div>
+        <%= form.label :prompt, "Describe the change", class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+        <%= form.text_area :prompt, required: true, rows: 8, placeholder: "Example: Stage a cleaner mobile header for the Thumper console. Do not publish until approved.", class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+      </div>
+
+      <div class="autos-chat-pending hidden border border-dotted border-pink-400 bg-pink-950/20 p-4" data-autos-chat-target="pending">
+        <div class="flex items-center justify-between gap-4">
+          <p class="font-mono text-xs font-black uppercase tracking-[0.24em] text-pink-200"><span class="autos-brain">🧠</span> Thumper building brief</p>
+          <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-400">staged only</p>
+        </div>
+        <div class="autos-progress mt-3 h-3 overflow-hidden border border-dotted border-white/40 bg-black">
+          <span></span>
+        </div>
+      </div>
+
+      <%= form.submit "🧠 STAGE WITH Thumper", class: "cursor-pointer border border-dotted border-white/50 bg-teal-700 px-6 py-4 font-mono text-[11px] font-black tracking-[0.18em] text-white hover:bg-white hover:text-black", data: { autos_chat_target: "submit" } %>
+    <% end %>
+  </div>
+
+  <div class="border border-dotted border-white/50 bg-[#111] p-5">
+    <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-teal-500">approval queue</p>
+    <h2 class="mt-2 font-mono text-2xl font-black text-white">Your staged builds</h2>
+    <div class="mt-5 grid gap-3">
+      <% @recent_build_requests.each do |request| %>
+        <% autos_build = request.metadata.to_h.dig("autos_build") || {} %>
+        <article class="border border-dotted border-white/30 bg-white/5 p-4">
+          <p class="font-mono text-xs uppercase tracking-[0.2em] text-teal-400"><%= request.status %> // <%= request.target_area %></p>
+          <h3 class="mt-2 font-black text-white"><%= request.title %></h3>
+          <p class="mt-2 line-clamp-3 text-sm text-zinc-300"><%= request.prompt %></p>
+
+          <% if autos_build["answer"].present? %>
+            <div class="mt-4 border border-dotted border-pink-400/50 bg-pink-950/10 p-4">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="font-mono text-[10px] font-black tracking-[0.22em] text-pink-300">Thumper // staged build brief</p>
+                <% if usage = autos_build.dig("openai", "usage", "total_tokens") %>
+                  <p class="font-mono text-[10px] tracking-[0.18em] text-zinc-500"><%= number_with_delimiter(usage) %> AUTOS_CRED</p>
+                <% end %>
+              </div>
+              <p class="mt-3 whitespace-pre-wrap text-sm leading-7 text-zinc-100"><%= autos_build["answer"] %></p>
+            </div>
+          <% else %>
+            <p class="mt-4 border border-dotted border-white/20 bg-black/30 p-3 font-mono text-xs text-zinc-400">No Thumper brief yet.</p>
+          <% end %>
+        </article>
+      <% end %>
+      <% if @recent_build_requests.blank? %>
+        <p class="border border-dotted border-white/30 bg-white/5 p-4 text-zinc-300">No staged builds yet.</p>
+      <% end %>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,7 @@
+<%= turbo_stream.replace "ask-autopilot-test", partial: "asks/autopilot_test", locals: { ask_autopilot_test: @ask_autopilot_test } %>
+<%= turbo_stream.replace "wizwiki-ask-hero-sms-telemetry", partial: "asks/hero_sms_telemetry", locals: { ask_autopilot_test: @ask_autopilot_test } %>
+<% unless params[:version].present? %>
+  <%= turbo_stream.update "autos_question_form" do %>
+    <%= render "asks/form", autos_question: @autos_question, ask_autopilot_test: @ask_autopilot_test %>
+  <% end %>
+<% end %>

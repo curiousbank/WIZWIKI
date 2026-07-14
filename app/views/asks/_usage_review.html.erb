@@ -1,0 +1,77 @@
+<% usage = local_assigns.fetch(:usage_review, nil) %>
+<% if usage.present? %>
+  <% embedding = usage[:embedding].to_h %>
+  <section id="wizwiki_usage_review" class="wizwiki-usage-review" aria-label="Thumper monthly usage review">
+    <div class="wizwiki-usage-head">
+      <span>Your month in review</span>
+      <strong><%= usage[:month_label] %></strong>
+      <small><%= usage[:rank_label] %></small>
+    </div>
+
+    <div class="wizwiki-usage-metrics">
+      <div>
+        <strong><%= number_with_delimiter(usage[:total_words]) %></strong>
+        <span>words processed</span>
+        <small><%= usage[:words_delta].to_i >= 0 ? "+" : "" %><%= number_with_delimiter(usage[:words_delta]) %> vs last month</small>
+      </div>
+      <div>
+        <strong><%= usage[:longest_streak] %></strong>
+        <span>longest streak</span>
+        <small><%= pluralize(usage[:active_days], "active day") %></small>
+      </div>
+      <div>
+        <strong><%= number_with_delimiter(usage[:avg_words_per_session]) %></strong>
+        <span>avg words/session</span>
+        <small><%= number_with_delimiter(usage[:estimated_typing_minutes_saved]) %> typing min saved</small>
+      </div>
+      <div>
+        <strong><%= number_with_delimiter(usage[:sessions]) %></strong>
+        <span>Thumper sessions</span>
+        <small><%= usage[:sessions_delta].to_i >= 0 ? "+" : "" %><%= number_with_delimiter(usage[:sessions_delta]) %> vs last month</small>
+      </div>
+    </div>
+
+    <div class="wizwiki-usage-memory">
+      <div>
+        <strong><%= number_with_delimiter(embedding[:chunks_embedded].to_i) %>/<%= number_with_delimiter(embedding[:chunks_total].to_i) %></strong>
+        <span>embedded memory chunks</span>
+        <small><%= number_with_delimiter(embedding[:chunks_pending].to_i) %> pending // <%= number_with_delimiter(embedding[:chunks_failed].to_i) %> failed</small>
+      </div>
+      <div>
+        <strong><%= number_with_delimiter(embedding[:training_documents].to_i) %></strong>
+        <span>training docs added</span>
+        <small><%= number_with_delimiter(embedding[:training_words].to_i) %> training words</small>
+      </div>
+      <div>
+        <strong><%= embedding[:embedding_models].presence&.join(", ") || "waiting" %></strong>
+        <span>embedder models</span>
+        <small>question memory + training docs</small>
+      </div>
+    </div>
+
+    <div class="wizwiki-usage-split">
+      <div class="wizwiki-usage-insight">
+        <span>Monthly insight</span>
+        <p><%= usage[:peak_insight] %></p>
+        <small><%= number_with_delimiter(usage[:prompt_words]) %> question words // <%= number_with_delimiter(usage[:answer_words]) %> answer words // <%= number_with_delimiter(usage[:voice_words]) %> voice words</small>
+      </div>
+
+      <div class="wizwiki-usage-calendar" aria-label="Thumper activity calendar">
+        <div class="wizwiki-usage-days">
+          <% %w[Su Mo Tu We Th Fr Sa].each do |day| %>
+            <span><%= day %></span>
+          <% end %>
+        </div>
+        <div class="wizwiki-usage-grid">
+          <% usage[:calendar].each do |day| %>
+            <% if day[:day].present? %>
+              <span class="wizwiki-usage-day wizwiki-usage-day--<%= day[:intensity] %>" title="<%= pluralize(day[:count], "Thumper session") %> on day <%= day[:day] %>"><%= day[:day] %></span>
+            <% else %>
+              <span class="wizwiki-usage-day wizwiki-usage-day--blank" aria-hidden="true"></span>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </section>
+<% end %>

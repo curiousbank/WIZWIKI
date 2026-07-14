@@ -1,0 +1,1145 @@
+<% content_for :title, "Report Maker" %>
+
+<% sync_status = @ticket_sync_status || {} %>
+<% contact_sync_active = sync_status[:contact_sync_active] %>
+<% active_handoff = @queued_report_count.to_i.positive? %>
+
+<section class="design-dark-panel border-2 border-dotted p-4 sm:p-5">
+  <div class="grid gap-5 lg:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.92fr)] lg:items-start">
+    <div>
+      <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-pink-300">report maker // Thumper voice workspace</p>
+      <h1 class="mt-2 font-mono text-3xl font-black tracking-[-0.06em] text-white sm:text-4xl">Report Maker</h1>
+      <p class="mt-3 max-w-4xl font-mono text-xs leading-6 text-zinc-300 sm:text-sm">
+        Choose a source lane, claim a card, then use RUN and COMM KIT to create Thumper-voice comm kits, client-facing market reports, Canva build kits, and follow-up packages. Owner Queue is the default source lane, while ALL, SAM, Facebook, Shopify, Haymarket, and Storm Watch stay available for broader report work.
+      </p>
+
+      <div class="mt-4 grid gap-3" data-controller="ticket-sync-status" data-ticket-sync-status-url-value="<%= sync_deal_queue_status_path(format: :json) %>" data-ticket-sync-status-interval-value="5000" data-ticket-sync-active="<%= contact_sync_active ? "true" : "false" %>">
+        <div class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(17rem,0.62fr)]">
+          <div class="border border-dotted border-cyan-300/45 bg-cyan-950/10 p-3">
+            <div class="flex flex-wrap items-end gap-2">
+              <form action="<%= deal_queue_path %>" method="get" class="grid min-w-56 flex-1 gap-1">
+                <label for="hero_lead_source" class="font-mono text-[9px] font-black uppercase tracking-[0.2em] text-cyan-100">Source lane</label>
+                <select id="hero_lead_source" name="lead_source" class="border border-dotted border-cyan-300/80 bg-black px-3 py-3 font-mono text-xs font-black text-cyan-100" aria-label="Source lane">
+                  <% @lead_source_options.each do |source| %>
+                    <option value="<%= source[:value] %>" <%= "selected" if @active_lead_source == source[:value] %>><%= source[:label] %> (<%= number_with_delimiter(@lead_source_counts[source[:value]].to_i) %>)</option>
+                  <% end %>
+                </select>
+                <button type="submit" class="design-soft-button border border-dotted border-cyan-300/60 bg-black px-3 py-2 font-mono text-[10px] font-black text-cyan-100 hover:bg-cyan-300 hover:text-black">OPEN LANE</button>
+              </form>
+              <% if @canva_connection&.connected? %>
+                <span class="border border-dotted border-green-300 bg-green-950/30 px-4 py-3 font-mono text-[10px] font-black text-green-100">🎨 CANVA CONNECTED</span>
+              <% else %>
+                <%= link_to "🎨 CONNECT CANVA", connect_canva_path, class: "design-soft-button border border-dotted border-green-300/80 px-4 py-3 font-mono text-[10px] font-black text-green-100 #{'pointer-events-none opacity-50' unless @canva_configured}" %>
+              <% end %>
+              <%= button_to "📇 SYNC 90-DAY CONTACTS", sync_deal_queue_path(lead_source: @active_lead_source), method: :post, disabled: !@hubspot_configured || contact_sync_active, class: "design-soft-button border border-dotted border-cyan-300/80 bg-cyan-950/25 px-4 py-3 font-mono text-[10px] font-black text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-cyan-300 hover:text-black", data: { turbo_confirm: "Sync HubSpot contacts created in the last 90 days, refresh associations, and update Facebook/Shopify/Haymarket lead lanes?", ticket_sync_status_target: "button", hubspot_configured: @hubspot_configured ? "true" : "false" } %>
+              <%= link_to "⛈️ WEATHER BRAIN", weather_path, class: "design-soft-button border border-dotted border-yellow-300/80 bg-black px-4 py-3 font-mono text-[10px] font-black text-yellow-100 hover:bg-yellow-300 hover:text-black" %>
+            </div>
+          </div>
+
+          <div class="border border-dotted border-fuchsia-300/70 bg-fuchsia-950/20 p-3 shadow-lg shadow-fuchsia-500/10">
+            <p class="font-mono text-[9px] font-black uppercase tracking-[0.22em] text-fuchsia-100">WIZWIKI COMMS</p>
+            <div class="mt-2 grid grid-cols-2 gap-2">
+              <div class="border border-dotted border-fuchsia-200/40 bg-black/35 p-2">
+                <p class="font-mono text-[8px] uppercase tracking-[0.16em] text-fuchsia-100/75">claimed report cards</p>
+                <strong class="block font-mono text-2xl leading-none text-white"><%= number_with_delimiter(@my_claimed_count.to_i) %></strong>
+                <p class="mt-1 font-mono text-[8px] uppercase tracking-[0.1em] text-fuchsia-100/60">ready to load</p>
+              </div>
+              <div class="border border-dotted border-lime-200/40 bg-black/35 p-2">
+                <p class="font-mono text-[8px] uppercase tracking-[0.16em] text-lime-100/75">loaded call blocks</p>
+                <strong class="block font-mono text-2xl leading-none text-white"><%= number_with_delimiter(@comm_staged_count.to_i) %></strong>
+                <p class="mt-1 font-mono text-[8px] uppercase tracking-[0.1em] text-lime-100/60">in WIZWIKI COMMS</p>
+              </div>
+            </div>
+            <div class="mt-3 grid gap-2 sm:grid-cols-2">
+              <%= link_to "OPEN COMMS", comms_command_path, class: "design-soft-button hero-phone-action border border-dotted border-lime-300/80 bg-lime-950/25 px-5 py-3 text-center font-mono text-[11px] font-black text-lime-100 hover:bg-lime-300 hover:text-black" %>
+              <%= button_to "☎ LOAD MY COMMS", run_all_deal_comms_path, method: :post, disabled: @my_claimed_count.to_i.zero?, class: "w-full design-soft-button hero-phone-action border border-dotted border-fuchsia-300/80 bg-fuchsia-950/30 px-5 py-3 font-mono text-[11px] font-black text-fuchsia-100 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-fuchsia-300 hover:text-black", data: { turbo_confirm: "Stage all lead cards claimed by you into WIZWIKI COMMS? This will not send SMS." } %>
+            </div>
+          </div>
+        </div>
+        <div data-ticket-sync-status-target="panel" class="max-w-xl border border-dotted <%= sync_status[:active] ? 'border-pink-300 bg-pink-950/25 text-pink-100' : sync_status[:state] == 'success' ? 'border-green-300/60 bg-green-950/20 text-green-100' : sync_status[:state] == 'failed' ? 'border-teal-300/70 bg-teal-950/25 text-teal-100' : 'border-white/25 bg-black/35 text-zinc-300' %> px-3 py-2 font-mono text-[10px] uppercase tracking-[0.16em]">
+          <p class="font-black"><span data-ticket-sync-status-target="state"><%= sync_status[:state_label].to_s.upcase.presence || "SYNC IDLE" %></span> <span data-ticket-sync-status-target="duration" class="text-zinc-500"><%= sync_status[:duration_label].present? ? "duration #{sync_status[:duration_label]}" : "" %></span></p>
+          <p data-ticket-sync-status-target="detail" class="mt-1 leading-4"><%= sync_status[:detail_label].presence || "No contact sync has been started yet." %></p>
+          <p data-ticket-sync-status-target="lastSuccess" class="mt-1 leading-4 text-zinc-300"><%= sync_status[:last_success_label].presence || "No successful contact sync yet." %></p>
+          <p data-ticket-sync-status-target="counts" class="mt-1 leading-4 text-zinc-400"><%= sync_status[:counts_label] %></p>
+        </div>
+      </div>
+
+      <% unless @canva_configured %>
+        <p class="mt-4 border border-dotted border-yellow-400 bg-yellow-950/30 px-4 py-3 font-mono text-xs text-yellow-100">
+          Canva client ID/secret are not configured for this Rails process yet. Add both values, restart WIZWIKI, then connect Canva.
+        </p>
+      <% end %>
+      <% unless @hubspot_configured %>
+        <p class="mt-4 border border-dotted border-teal-500 bg-teal-950/40 px-4 py-3 font-mono text-xs text-teal-100">
+          HUBSPOT_KEY is not configured for this Rails process. Add the key, restart WIZWIKI, then sync.
+        </p>
+      <% end %>
+    </div>
+
+    <div class="grid gap-3">
+      <turbo-frame id="deal_queue_stats">
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <% [
+            ["filtered", @filtered_count, "of #{number_with_delimiter(@total_count)} synced", "border-white/30 text-white"],
+            ["priority", @priority_count, "manual or HubSpot", "border-yellow-300/70 text-yellow-100"],
+            ["unclaimed", @unclaimed_count, "open lane", "border-green-300/70 text-green-100"],
+            ["claimed", @claimed_count, "owned cards", "border-cyan-300/70 text-cyan-100"],
+            ["source pool", @recent_count, @active_lead_source_label, "border-orange-300/70 text-orange-100"],
+            ["ready kits", @completed_report_count, "completed assets", "border-pink-300/70 text-pink-100"]
+          ].each do |label, value, detail, classes| %>
+            <div class="border border-dotted bg-black/35 p-3 <%= classes %>">
+              <p class="font-mono text-[8px] uppercase tracking-[0.18em] opacity-75"><%= label %></p>
+              <strong class="mt-1 block font-mono text-2xl leading-none"><%= number_with_delimiter(value.to_i) %></strong>
+              <p class="mt-1 truncate font-mono text-[8px] uppercase tracking-[0.12em] opacity-70"><%= detail %></p>
+            </div>
+          <% end %>
+        </div>
+      </turbo-frame>
+
+      <turbo-frame id="deal_queue_processing_bay">
+        <div class="border border-dotted <%= active_handoff ? 'border-pink-300/80 bg-pink-950/25 text-pink-100' : 'border-white/25 bg-black/35 text-zinc-400' %> p-3">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <p class="font-mono text-[9px] font-black uppercase tracking-[0.25em] text-pink-300">Thumper Build Bay</p>
+              <p class="mt-1 font-mono text-[10px] uppercase tracking-[0.14em]"><%= active_handoff ? pluralize(@queued_report_count, 'active package') : 'Thumper idle // no active packages' %></p>
+            </div>
+            <span class="am-report-working-icon <%= 'am-report-working-icon--active' if active_handoff %> text-2xl">🧠⚡</span>
+          </div>
+          <div class="am-report-handoff-meter <%= 'am-report-handoff-meter--active' if active_handoff %> mt-3"><span style="width: <%= active_handoff ? 42 : 8 %>%"></span></div>
+          <div id="processing-bay-live-feedback" hidden class="processing-bay-live-feedback mt-3 border border-dotted border-pink-300/70 bg-pink-950/25 px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.18em] text-pink-100"></div>
+
+          <% if @report_queue.any? %>
+            <div class="mt-3 grid gap-2">
+              <% @report_queue.each do |artifact| %>
+                <% deal = artifact.crm_record %>
+                <article id="deal-report-queue-item-<%= artifact.id %>" class="border border-dotted border-white/20 bg-black/45 p-2">
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                      <p class="truncate text-xs font-black text-white"><%= deal ? deal_company_name(deal) : artifact.title %></p>
+                      <p class="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-500">artifact #<%= artifact.id %> // <%= artifact.status %></p>
+                      <p class="mt-1 truncate text-[11px] text-zinc-300"><%= report_display_title(artifact) %></p>
+                    </div>
+                    <%= button_to "X", remove_deal_report_from_queue_path(artifact), method: :delete, form_class: "contents", class: "am-report-x-button shrink-0 border border-dotted border-teal-300/80 bg-black px-2 py-1 text-center font-mono text-[9px] font-black text-teal-100 hover:bg-teal-300 hover:text-black", title: "Remove from Processing Bay", data: { turbo_confirm: "Remove this AM report from the Processing Bay?" } %>
+                  </div>
+                </article>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </turbo-frame>
+    </div>
+  </div>
+</section>
+
+<section class="design-dark-panel mt-4 border border-dotted p-4">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-pink-300">source cards // <%= @active_lead_source_label %></p>
+      <h2 class="mt-1 font-mono text-xl font-black text-white">Report + comm cards</h2>
+      <p class="mt-2 max-w-3xl font-mono text-xs leading-5 text-zinc-400">Claimed-by-you cards pin to the top. Use RUN for client reports and COMM KIT for Thumper-voice SMS/email outreach. Owner Queue loads Sample Owner-owned HubSpot lead records first; ALL combines Sample Owner, SAM, Facebook, Shopify, Haymarket, and Storm Watch lanes.</p>
+      <p class="mt-2 inline-flex border border-dotted border-green-300/50 bg-green-950/20 px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-green-100">showing <%= number_with_delimiter(@visible_count || @deals.size) %> of <%= number_with_delimiter(@filtered_count) %> filtered cards // <%= number_with_delimiter(@total_count) %> synced total</p>
+    </div>
+    <form action="<%= deal_queue_path %>" method="get" class="flex min-w-72 flex-1 flex-wrap justify-end gap-2" data-controller="instant-filter" data-instant-filter-delay-value="180" data-action="input->instant-filter#queue change->instant-filter#submit turbo:submit-end->instant-filter#refreshFrames" data-turbo-frame="deal_queue_results">
+      <select name="lead_source" class="border border-dotted border-pink-300/80 bg-black px-3 py-2 font-mono text-xs font-black text-pink-100" aria-label="Source lane">
+        <% @lead_source_options.each do |source| %>
+          <option value="<%= source[:value] %>" <%= "selected" if @active_lead_source == source[:value] %>><%= source[:label] %> (<%= number_with_delimiter(@lead_source_counts[source[:value]].to_i) %>)</option>
+        <% end %>
+      </select>
+      <input type="search" name="q" value="<%= params[:q] %>" placeholder="search cards, owners, companies" class="min-w-52 flex-1 border border-dotted border-white/35 bg-black px-3 py-2 font-mono text-xs text-white placeholder:text-zinc-600">
+      <select name="priority_status" class="border border-dotted border-yellow-300/70 bg-black px-3 py-2 font-mono text-xs text-yellow-100" aria-label="Priority status">
+        <option value="">all priority</option>
+        <option value="priority" <%= "selected" if params[:priority_status] == "priority" %>>priority only</option>
+        <option value="standard" <%= "selected" if params[:priority_status] == "standard" %>>standard only</option>
+      </select>
+      <select name="claim_status" class="border border-dotted border-white/35 bg-black px-3 py-2 font-mono text-xs text-white">
+        <option value="">all claims</option>
+        <option value="unclaimed" <%= "selected" if params[:claim_status] == "unclaimed" %>>unclaimed</option>
+        <option value="claimed" <%= "selected" if params[:claim_status] == "claimed" %>>claimed</option>
+      </select>
+      <select name="claim_owner_id" class="border border-dotted border-white/35 bg-black px-3 py-2 font-mono text-xs text-white">
+        <option value="">all owners</option>
+        <% @claim_owners.each do |owner| %>
+          <option value="<%= owner.id %>" <%= "selected" if params[:claim_owner_id].to_s == owner.id.to_s %>><%= owner.display_name %></option>
+        <% end %>
+      </select>
+      <% if @ticket_pipeline_filters_enabled %>
+        <select name="pipeline_id" class="border border-dotted border-white/35 bg-black px-3 py-2 font-mono text-xs text-white" aria-label="HubSpot ticket pipeline">
+          <option value="all" <%= "selected" if @active_pipeline_id.blank? && @active_ticket_status_value.blank? %>>all pipelines</option>
+          <% @ticket_pipeline_options.each do |pipeline| %>
+            <option value="<%= pipeline[:id] %>" <%= "selected" if @active_pipeline_id.to_s == pipeline[:id].to_s && @active_ticket_status_value.blank? %>><%= pipeline[:label] %></option>
+          <% end %>
+        </select>
+        <select name="ticket_status" class="border border-dotted border-white/35 bg-black px-3 py-2 font-mono text-xs text-white" aria-label="HubSpot Ticket status">
+          <option value="" <%= "selected" if @active_ticket_status_value.blank? %>>all ticket statuses</option>
+          <% @ticket_pipeline_options.each do |pipeline| %>
+            <optgroup label="<%= pipeline[:label] %>">
+              <% pipeline[:stages].each do |stage| %>
+                <% status_value = "#{pipeline[:id]}:#{stage[:id]}" %>
+                <option value="<%= status_value %>" <%= "selected" if @active_ticket_status_value == status_value %>><%= stage[:label] %></option>
+              <% end %>
+            </optgroup>
+          <% end %>
+        </select>
+      <% else %>
+        <span class="border border-dotted border-pink-300/40 bg-pink-950/20 px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-pink-100">
+          <%= @active_lead_source_option[:short_label] %> source match
+        </span>
+      <% end %>
+      <button type="submit" class="design-soft-button border border-dotted border-white/50 px-4 py-2 font-mono text-[10px] font-black text-white">FILTER</button>
+    </form>
+  </div>
+  <p class="mt-3 border border-dotted border-white/20 bg-black/35 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-300">
+    lead source // <span class="text-green-100"><%= @active_lead_source_label %></span>
+    <% if @ticket_pipeline_filters_enabled %>
+      // hs_pipeline_stage focus // <span class="text-green-100"><%= @active_ticket_status_label.presence || "#{@active_pipeline_label} // all statuses" %></span>
+    <% else %>
+      // <span class="text-green-100"><%= @active_lead_source_option[:description] %></span>
+    <% end %>
+  </p>
+
+  <div class="mt-4 inline-flex items-center gap-3 border border-dotted border-green-300/60 bg-green-950/20 px-4 py-3 font-mono uppercase tracking-[0.18em] text-green-100">
+    <span class="text-[10px] text-zinc-400">current filter</span>
+    <strong class="text-2xl leading-none text-white"><%= number_with_delimiter(@filtered_count) %></strong>
+    <span class="text-[10px]">report cards showing</span>
+  </div>
+
+  <turbo-frame id="deal_queue_results">
+    <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <% @deals.each do |deal| %>
+        <% company_name = deal_company_name(deal) %>
+        <% claimed_by_me = deal_claimed_by_current_user?(deal) %>
+        <% priority_level = deal_priority_level(deal) %>
+        <% priority_card_class = if priority_level == "urgent"
+          "border-teal-300/90 bg-teal-950/25 shadow-lg shadow-teal-500/15 ring-1 ring-teal-300/40"
+        elsif priority_level == "priority"
+          "border-yellow-300/80 bg-yellow-950/20 shadow-lg shadow-yellow-400/10 ring-1 ring-yellow-300/30"
+        elsif claimed_by_me
+          "border-cyan-200/80 bg-cyan-950/35 shadow-lg shadow-cyan-400/10 ring-1 ring-cyan-200/30"
+        else
+          "border-white/25 bg-black/40"
+        end %>
+        <% media_attachments = deal.deal_media.attachments.to_a %>
+        <% artifacts = deal.crm_record_artifacts.select { |artifact| artifact.artifact_type == "market_report" }.sort_by { |artifact| artifact.created_at || Time.zone.at(0) }.reverse %>
+        <% comm_stages = claimed_by_me ? deal.crm_record_artifacts.select { |artifact| artifact.artifact_type == "comm_staging" && artifact.status.to_s.in?(%w[staged aircall_ready aircall_sent]) }.sort_by { |artifact| artifact.updated_at || artifact.created_at || Time.zone.at(0) }.reverse : [] %>
+        <% latest_comm_stage = comm_stages.first %>
+        <% completed_report_count = deal_completed_report_count(deal) %>
+        <% latest_ready_report = artifacts.find { |artifact| canva_kit_downloadable?(artifact) } %>
+        <% client_report_count = artifacts.count { |artifact| (artifact.metadata.to_h["report_audience"].presence || "client").to_s == "client" } %>
+        <% am_report_count = artifacts.count { |artifact| artifact.metadata.to_h["report_audience"].to_s == "am" } %>
+        <% copy_maker_report_count = artifacts.count { |artifact| artifact.metadata.to_h["report_audience"].to_s == "copy_maker" } %>
+        <% active_client_report = artifacts.find { |artifact| artifact.status.in?(%w[queued generating report_ready]) && (artifact.metadata.to_h["report_audience"].presence || "client").to_s == "client" } %>
+        <% active_am_report = artifacts.find { |artifact| artifact.status.in?(%w[queued generating report_ready]) && artifact.metadata.to_h["report_audience"].to_s == "am" } %>
+        <% active_copy_maker_report = artifacts.find { |artifact| artifact.status.in?(%w[queued generating report_ready]) && artifact.metadata.to_h["report_audience"].to_s == "copy_maker" } %>
+        <% active_reports = [active_client_report, active_am_report, active_copy_maker_report].compact %>
+        <% deal_overview_rows = [
+          ["Company", company_name],
+          ["Deal", deal.name],
+          ["Stage", deal.stage],
+          ["Status", deal.status],
+          ["Amount", deal.amount.present? ? number_to_currency(deal.amount) : nil],
+          ["Close date", deal.close_date],
+          ["Owner", deal_claim_label(deal)],
+          ["Priority", "#{deal_priority_label(deal)} // #{deal_priority_source(deal)}"],
+          ["Source", deal.source],
+          ["HubSpot ID", deal.source_uid],
+          ["Created", deal.created_at&.strftime("%b %-d, %Y %l:%M %p")],
+          ["Updated", deal.updated_at&.strftime("%b %-d, %Y %l:%M %p")]
+        ] %>
+        <% raw_hubspot_properties = (deal.properties.to_h.dig("hubspot", "properties") || {}).to_h.sort_by { |key, _value| key.to_s } %>
+        <% weather_signals = weather_lead_signals_for(deal) %>
+
+        <article id="deal-card-<%= deal.id %>" data-deal-card class="design-hover-tile relative grid min-h-52 content-between gap-3 border border-dotted p-3 <%= priority_card_class %>">
+          <details class="deal-info-details relative">
+            <summary class="deal-info-summary list-none">
+              <div class="deal-info-card">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 class="text-base font-black leading-tight text-white"><%= company_name %></h3>
+                    <% if deal_priority?(deal) %>
+                      <p class="mt-1 inline-flex border border-dotted px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.18em] <%= deal_priority_badge_class(deal) %>">⚡ <%= deal_priority_label(deal) %> // <%= deal_priority_source(deal) %></p>
+                    <% end %>
+                    <% if claimed_by_me %>
+                      <p class="deal-card-claim-badge mt-1 inline-flex border border-dotted border-cyan-200/70 bg-cyan-200/10 px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.18em] text-cyan-100">claimed by you // pinned</p>
+                    <% elsif deal_claimed?(deal) %>
+                      <p class="deal-card-claim-badge mt-1 inline-flex border border-dotted border-white/25 bg-white/5 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.18em] text-zinc-300">claimed by <%= deal_claim_label(deal) %></p>
+                    <% end %>
+                    <% if deal.name != company_name %>
+                      <p class="mt-1 line-clamp-1 text-xs text-zinc-500"><%= deal.name %></p>
+                    <% end %>
+                  </div>
+                  <div class="grid shrink-0 gap-1 text-right">
+                    <span class="deal-card-count-badge border border-dotted border-white/30 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-300"><%= completed_report_count %> rpt // <%= media_attachments.size %> media</span>
+                    <% if latest_ready_report.present? %>
+                      <%= link_to "READY KIT ##{latest_ready_report.id}", canva_kit_url(latest_ready_report), data: { turbo: false }, class: "inline-block border border-dotted border-green-300 bg-green-950/30 px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.14em] text-green-100 hover:bg-green-300 hover:text-black" %>
+                    <% end %>
+                  </div>
+                </div>
+                <% if weather_signals.any? %>
+                  <div class="mt-3 border border-dotted border-yellow-300/70 bg-yellow-950/20 p-2 font-mono text-[9px] uppercase tracking-[0.13em] text-yellow-100">
+                    <p class="font-black tracking-[0.18em]">⛈️ storm watch match</p>
+                    <div class="mt-2 grid gap-1">
+                      <% weather_signals.each do |signal| %>
+                        <div class="border border-dotted border-yellow-200/30 bg-black/40 px-2 py-1">
+                          <span class="font-black text-white"><%= signal[:event] %></span>
+                          <% if signal[:severity].present? %>
+                            <span class="text-yellow-200/80"> // <%= signal[:severity] %></span>
+                          <% end %>
+                          <% if signal[:location].present? %>
+                            <span class="text-yellow-50/80"> // <%= signal[:location] %></span>
+                          <% end %>
+                          <% if signal[:expires_at].present? %>
+                            <span class="text-zinc-300"> // until <%= signal[:expires_at] %></span>
+                          <% end %>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+                <div class="mt-3 grid grid-cols-2 gap-2 font-mono text-[10px] uppercase tracking-[0.13em] text-zinc-400">
+                  <span><b class="block text-zinc-100"><%= deal.stage.presence || "unknown" %></b>stage</span>
+                  <span><b class="block"><% if deal.amount.present? %><span class="amount-dollar">$</span><span class="amount-number"><%= number_with_delimiter(deal.amount.to_i) %></span><% else %><span class="text-zinc-100">--</span><% end %></b>amount</span>
+                  <span><b class="block text-zinc-100"><%= deal.close_date&.strftime("%b %-d") || "--" %></b>close</span>
+                  <span><b class="block text-zinc-100">#<%= deal.source_uid.presence || deal.id %></b>hubspot</span>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2" data-turbo-frame="deal_queue_results">
+                  <% unless priority_level == "priority" %>
+                    <%= button_to "PRIORITY", update_deal_priority_path(deal), method: :patch, params: { priority_level: "priority" }, form_class: "contents", class: "border border-dotted border-yellow-300/70 bg-black px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.14em] text-yellow-100 hover:bg-yellow-300 hover:text-black", title: "Mark as priority" %>
+                  <% end %>
+                  <% unless priority_level == "urgent" %>
+                    <%= button_to "URGENT", update_deal_priority_path(deal), method: :patch, params: { priority_level: "urgent" }, form_class: "contents", class: "border border-dotted border-teal-300/70 bg-black px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.14em] text-teal-100 hover:bg-teal-300 hover:text-black", title: "Mark as urgent" %>
+                  <% end %>
+                  <% if deal_priority?(deal) %>
+                    <%= button_to "CLEAR", update_deal_priority_path(deal), method: :patch, params: { priority_level: "normal" }, form_class: "contents", class: "border border-dotted border-white/30 bg-black px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.14em] text-zinc-300 hover:bg-white hover:text-black", title: "Return to standard queue" %>
+                  <% end %>
+                </div>
+                <p class="mt-3 font-mono text-[9px] font-black uppercase tracking-[0.18em] text-blue-100/80">click card for info</p>
+              </div>
+            </summary>
+
+            <div class="deal-flyout deal-flyout--info absolute left-0 right-0 top-full z-50 mt-2 max-h-[min(76vh,36rem)] overflow-y-auto border border-dotted border-blue-200/70 bg-black p-4 shadow-2xl shadow-black">
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p class="font-mono text-[10px] font-black uppercase tracking-[0.18em] text-blue-100">deal info</p>
+                  <h4 class="mt-1 text-lg font-black leading-tight text-white"><%= company_name %></h4>
+                  <p class="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">record #<%= deal.id %> // <%= deal.source.presence || "manual" %></p>
+                </div>
+                <span class="border border-dotted border-blue-200/50 bg-blue-950/60 px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.16em] text-blue-100">tap card title to close</span>
+              </div>
+
+              <div class="mt-4 grid gap-4 lg:grid-cols-2">
+                <section>
+                  <p class="font-mono text-[10px] font-black uppercase tracking-[0.18em] text-zinc-300">overview</p>
+                  <dl class="mt-2 grid gap-2">
+                    <% deal_overview_rows.each do |label, value| %>
+                      <div class="border border-dotted border-white/15 bg-white/5 p-3">
+                        <dt class="font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-500"><%= label %></dt>
+                        <dd class="mt-1 break-words text-xs text-white"><%= value.presence || "empty" %></dd>
+                      </div>
+                    <% end %>
+                  </dl>
+                </section>
+
+                <section>
+                  <p class="font-mono text-[10px] font-black uppercase tracking-[0.18em] text-zinc-300">report fields</p>
+                  <dl class="mt-2 grid gap-2">
+                    <% deal_queue_report_fields.each do |label| %>
+                      <% value = hubspot_deal_value(deal, label) %>
+                      <div class="border border-dotted border-white/15 bg-white/5 p-3">
+                        <dt class="font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-500"><%= label %></dt>
+                        <dd class="mt-1 break-words text-xs text-white"><%= value.presence || "empty" %></dd>
+                      </div>
+                    <% end %>
+                  </dl>
+                </section>
+              </div>
+
+              <% if raw_hubspot_properties.any? %>
+                <details class="mt-4 border border-dotted border-white/20 bg-white/5 p-3">
+                  <summary class="cursor-pointer font-mono text-[10px] font-black uppercase tracking-[0.16em] text-zinc-300">raw HubSpot properties</summary>
+                  <dl class="mt-2 grid gap-2 lg:grid-cols-2">
+                    <% raw_hubspot_properties.each do |key, value| %>
+                      <% next if value.blank? %>
+                      <div class="border border-dotted border-white/10 bg-black/35 p-2">
+                        <dt class="break-all font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-500"><%= key %></dt>
+                        <dd class="mt-1 break-words text-xs text-zinc-100"><%= value %></dd>
+                      </div>
+                    <% end %>
+                  </dl>
+                </details>
+              <% end %>
+            </div>
+          </details>
+
+          <% watch_artifact = deal_watch_artifact(deal, artifacts) %>
+          <div class="grid gap-2">
+            <% active_reports.each do |processing_report| %>
+              <% processing_audience = case processing_report.metadata.to_h["report_audience"].to_s when "am" then "am" when "copy_maker" then "copy_maker" else "client" end %>
+              <% processing_report_count = case processing_audience when "am" then am_report_count when "copy_maker" then copy_maker_report_count else client_report_count end %>
+              <span class="deal-card-processing-badge border border-dotted border-pink-300/70 bg-pink-950/25 px-3 py-2 text-center font-mono text-[10px] font-black uppercase tracking-[0.18em] text-pink-100" data-controller="report-timer" data-report-timer-deal-id-value="<%= deal.id %>" data-report-timer-report-count-value="<%= processing_report_count %>" data-report-timer-status-url-value="<%= deal_report_status_path(deal) %>" data-report-timer-poll-interval-value="5000" data-report-timer-audience-value="<%= processing_audience %>"><%= report_processing_status_label(processing_report) %> <b data-report-timer-target="seconds"></b></span>
+            <% end %>
+            <div class="deal-action-row deal-action-row--compact grid grid-cols-5 gap-1.5">
+              <% if deal_claimed_by_current_user?(deal) %>
+                <span class="deal-action-button deal-action-button--cyan" title="Claimed by you">YOU</span>
+              <% elsif deal_claimed?(deal) %>
+                <span class="deal-action-button deal-action-button--muted" title="Claimed by <%= deal_claim_label(deal) %>">AM</span>
+              <% else %>
+                <%= button_to "CLAIM", claim_deal_path(deal), method: :post, form_class: "contents", class: "deal-action-button deal-action-button--green" %>
+		                  <% end %>
+
+	              <details class="relative">
+	                <summary class="deal-action-button deal-action-button--orange cursor-pointer list-none" title="Deal media folder">+ 📁 <%= media_attachments.size %></summary>
+                <div class="deal-flyout deal-flyout--media absolute bottom-full left-0 right-0 z-50 mb-2 max-h-96 overflow-y-auto border border-dotted border-orange-200/70 bg-black p-4 shadow-2xl shadow-black sm:left-auto sm:w-80">
+                  <p class="font-mono text-[10px] font-black uppercase tracking-[0.18em] text-orange-100">media folder</p>
+                  <p class="mt-1 text-xs leading-5 text-zinc-400">Upload logos, photos, PDFs, notes, or campaign assets before generating the report.</p>
+                  <% if claimed_by_me %>
+                    <form action="<%= upload_deal_media_path(deal) %>" method="post" enctype="multipart/form-data" class="deal-media-upload-form mt-3 grid gap-2" data-controller="submit-overlay" data-submit-overlay-label-value="Uploading media" data-turbo-frame="deal_queue_results" data-action="turbo:submit-start->submit-overlay#start turbo:submit-end->submit-overlay#finish">
+  <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>" autocomplete="off">
+  <input type="file" name="deal_media[files][]" multiple accept="image/*,application/pdf,text/plain,.txt,.csv,.doc,.docx,.ppt,.pptx" class="deal-media-input w-full border border-dotted border-white/35 bg-[#090909] p-2 font-mono text-[10px] text-zinc-100">
+  <button type="submit" class="deal-media-upload-button border border-dotted border-orange-200/80 bg-orange-950/40 px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-orange-100 hover:bg-orange-200 hover:text-black disabled:cursor-wait disabled:opacity-70" data-submit-overlay-target="button">UPLOAD MEDIA</button>
+  <div hidden data-submit-overlay-target="overlay" class="deal-submit-overlay border border-dotted border-orange-200/70 bg-orange-950/30 px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-orange-100">media uploading // <b data-submit-overlay-target="seconds">0s</b></div>
+</form>
+                  <% else %>
+                    <p class="mt-3 border border-dotted border-white/20 bg-white/5 p-3 font-mono text-[10px] text-zinc-400">Claim this deal to upload media.</p>
+                  <% end %>
+
+                  <div class="mt-3 grid gap-2">
+                    <% if media_attachments.any? %>
+                      <% media_attachments.each do |attachment| %>
+                        <div class="border border-dotted border-white/20 bg-white/5 p-3">
+                          <% if attachment.blob.content_type.to_s.start_with?("image/") %>
+                            <div class="mb-2 overflow-hidden border border-dotted border-orange-200/40 bg-black">
+                              <%= image_tag url_for(attachment), alt: "#{attachment.filename} thumbnail", loading: "lazy", class: "h-32 w-full object-cover" %>
+                            </div>
+                          <% end %>
+                          <p class="font-mono text-[10px] font-black uppercase tracking-[0.14em] text-orange-100"><%= deal_media_icon(attachment) %> // <%= number_to_human_size(attachment.blob.byte_size) %></p>
+                          <p class="mt-1 break-all text-xs text-white"><%= attachment.filename %></p>
+                          <p class="mt-1 font-mono text-[10px] text-zinc-500"><%= attachment.created_at.strftime("%b %-d %l:%M %p") %></p>
+                          <% if claimed_by_me %>
+                            <%= button_to "REMOVE", destroy_deal_media_path(deal, attachment), method: :delete, form_class: "mt-2", class: "border border-dotted border-teal-300/70 px-2 py-1 font-mono text-[10px] font-black text-teal-100 hover:bg-teal-300 hover:text-black", data: { turbo_confirm: "Remove #{attachment.filename}?" } %>
+                          <% end %>
+                        </div>
+                      <% end %>
+                    <% else %>
+                      <p class="border border-dotted border-white/20 p-2 font-mono text-[10px] text-zinc-500">No media uploaded yet.</p>
+                    <% end %>
+                  </div>
+                </div>
+              </details>
+
+<% if claimed_by_me %>
+  <details class="relative rpt-lab-details">
+    <summary class="deal-action-button deal-action-button--pink am-report-button cursor-pointer list-none" title="Open Thumper report lab">
+      <span class="am-report-button__icon">🏃⚡</span> RUN
+    </summary>
+    <div class="rpt-lab-backdrop" aria-hidden="true"></div>
+    <div class="deal-flyout deal-flyout--report rpt-lab-overlay" role="dialog" aria-modal="true" aria-label="Thumper report lab">
+      <form action="<%= queue_deal_report_path(deal) %>" method="post" class="rpt-lab-form" data-controller="rpt-builder report-timer" data-rpt-builder-client-count-value="<%= client_report_count %>" data-rpt-builder-am-count-value="<%= am_report_count %>" data-rpt-builder-copy-maker-count-value="<%= copy_maker_report_count %>" data-report-timer-deal-id-value="<%= deal.id %>" data-report-timer-report-count-value="<%= client_report_count %>" data-report-timer-status-url-value="<%= deal_report_status_path(deal) %>" data-report-timer-poll-interval-value="5000" data-report-timer-audience-value="client" data-turbo-frame="deal_queue_results" data-action="change->rpt-builder#update keydown.esc@window->rpt-builder#close turbo:submit-start->rpt-builder#beforeSubmit turbo:submit-start->report-timer#start turbo:submit-end->report-timer#submitted">
+        <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>" autocomplete="off">
+        <div class="rpt-lab-header">
+          <div class="rpt-lab-clippy" role="button" tabindex="0" aria-label="Thumper AI Lab help" aria-describedby="rpt_lab_clippy_help_<%= deal.id %>">
+            <%= image_tag "autos.png", alt: "Thumper AI Lab helper", class: "rpt-lab-clippy-image" %>
+            <span id="rpt_lab_clippy_help_<%= deal.id %>" class="rpt-lab-clippy-bubble" role="tooltip">
+              <strong>Thumper AI LAB GUIDE</strong>
+              <span>CLIENT REPORT builds the buyer-facing strategy doc and Canva kit. AM REPORT builds internal notes, risks, and next actions. COPYWRITER builds ads, postcards, SMS/email copy, and COMM KIT batches.</span>
+              <span>LOCAL LLM PREP lets Qwen digest CRM, media, Fathom, weather, and fine-training context before the final writer. Turn it off for payload-only copy tests.</span>
+              <span>COPY POST PAYLOAD chooses the final writer for COPY mode. The Voice Editor tunes the source text Thumper retrieves across reports, /ask, and SMS.</span>
+            </span>
+          </div>
+          <div>
+            <p class="rpt-lab-kicker">
+              <span>WIZWIKI // Thumper</span>
+            </p>
+            <h4 class="rpt-lab-title">AI LAB</h4>
+            <p class="rpt-lab-subtitle">🎮 PICK MODES. TUNE MODELS. CREATE.</p>
+            <p class="rpt-lab-voice-engine">THUMPER VON AUTOS</p>
+          </div>
+          <div class="rpt-lab-actions">
+            <% if current_user.primary_membership&.admin? %>
+              <div class="rpt-lab-voice-editor-dock">
+                <%= render "training_documents/voice_editor", documents: @voice_training_documents, context: "rpt-lab-#{deal.id}", fine_training_embedding_status: @fine_training_embedding_status %>
+              </div>
+            <% end %>
+            <button type="button" class="rpt-lab-close" data-action="rpt-builder#close">✕ CLOSE</button>
+          </div>
+        </div>
+
+        <div class="rpt-lab-screen">
+        <label for="report_audience_<%= deal.id %>" class="rpt-lab-mode">
+          <span>MODES</span>
+          <select id="report_audience_<%= deal.id %>" name="report_audience" class="deal-report-model-select rpt-lab-select" data-rpt-builder-target="audience" data-action="change->rpt-builder#update">
+            <option value="client">🤝 CLIENT REPORT</option>
+            <option value="am">🧭 AM REPORT</option>
+            <option value="copy_maker">✒️ COPY</option>
+          </select>
+        </label>
+
+        <label for="industry_strategy_lens_<%= deal.id %>" class="rpt-lab-mode">
+          <span>INDUSTRY LENS</span>
+          <select id="industry_strategy_lens_<%= deal.id %>" name="industry_strategy_lens" class="deal-report-model-select rpt-lab-select">
+            <% industry_strategy_lens_options.each do |option| %>
+              <option value="<%= option[:value] %>"><%= option[:label] %></option>
+            <% end %>
+          </select>
+        </label>
+
+        <div class="rpt-lab-copy-dock">
+          <label for="copy_maker_cloud_provider_<%= deal.id %>" class="rpt-lab-cloud-control" data-rpt-builder-target="cloudDock" hidden>
+            <span>☁️ COPY POST PAYLOAD</span>
+            <select id="copy_maker_cloud_provider_<%= deal.id %>" name="copy_maker_cloud_provider" class="rpt-lab-cloud-select">
+              <option value="nvidia">🟩 NVIDIA Nemotron</option>
+              <option value="openai">⚡ OpenAI</option>
+              <option value="qwen">🧠 Qwen Local 8B</option>
+              <option value="qwen_9b">🧠 Qwen Local 9B MLX</option>
+              <option value="qwen_30b">🧠 Qwen Local 30B</option>
+              <option value="qwen_35b">🧠 Qwen Local 35B MLX</option>
+            </select>
+            <em>AVAILABLE IN COPY MODE // NVIDIA · OPENAI · QWEN 8B · QWEN 9B MLX · QWEN 30B · QWEN 35B MLX</em>
+          </label>
+          <label for="report_context_prompt_<%= deal.id %>" class="rpt-lab-copy-prompt">✒️ CONTEXT</label>
+          <textarea id="report_context_prompt_<%= deal.id %>" name="report_context_prompt" rows="5" maxlength="1200" placeholder="Add direction for Thumper: offer angle, audience, tone, services to emphasize, things to avoid..." class="rpt-lab-copy-box"></textarea>
+          <p class="rpt-lab-panel-note">✒️ Thumper blends this context with CRM data for Client, AM, and COPY runs.</p>
+        </div>
+
+        <div data-rpt-builder-target="panel" data-rpt-builder-audience="client" class="rpt-lab-panel rpt-lab-panel--client border border-dotted border-green-300/40 bg-green-950/15 p-3">
+          <div class="rpt-lab-panel-selectors">
+            <label for="report_embedder_client_<%= deal.id %>" class="rpt-lab-control">
+              <span>1 // embedder <b>★ default</b></span>
+              <select id="report_embedder_client_<%= deal.id %>" name="report_embedder_model" class="deal-report-model-select deal-report-model-select--client">
+                <% report_embedder_model_options.each do |label, model| %>
+                  <option value="<%= model %>" <%= "selected" if model == WizwikiSettings.report_embedder_model %>><%= label %></option>
+                <% end %>
+              </select>
+            </label>
+            <label for="report_local_model_client_<%= deal.id %>" class="rpt-lab-control">
+              <span>2 // local LLM <b>★ default</b></span>
+              <select id="report_local_model_client_<%= deal.id %>" name="report_local_model" class="deal-report-model-select deal-report-model-select--client">
+                <% report_local_model_options.each do |label, model| %>
+                  <option value="<%= model %>" <%= "selected" if model == WizwikiSettings.default_report_lane[:report_local_model] %>><%= label %></option>
+                <% end %>
+              </select>
+            </label>
+            <label for="report_challenger_client_<%= deal.id %>" class="rpt-lab-control">
+              <span>3 // challenger <b>review</b></span>
+              <select id="report_challenger_client_<%= deal.id %>" name="report_challenger_model" class="deal-report-model-select deal-report-model-select--client">
+                <% report_challenger_model_options.each do |label, model| %>
+                  <option value="<%= model %>" <%= "selected" if model == WizwikiSettings.default_challenger_model %>><%= label %></option>
+                <% end %>
+              </select>
+            </label>
+          </div>
+          <div class="mb-2 grid gap-2 border border-dotted border-green-300/30 bg-green-950/20 p-2 font-mono text-[9px] font-black uppercase tracking-[0.12em] text-green-100" data-controller="design-press">
+            <label class="flex items-start gap-2">
+              <input type="checkbox" name="report_preflight_scan" value="1" class="mt-0.5 h-3.5 w-3.5 accent-green-300">
+              <span>👁️ SCAN <em class="block font-normal not-italic tracking-normal text-green-200/75">Read images first.</em></span>
+            </label>
+            <label class="flex items-start gap-2">
+              <input type="checkbox" name="report_post_review" value="1" class="mt-0.5 h-3.5 w-3.5 accent-green-300">
+              <span>🧽 POLISH <em class="block font-normal not-italic tracking-normal text-green-200/75">Clean text pass.</em></span>
+            </label>
+            <label class="flex items-start gap-2">
+              <input type="checkbox" name="report_page_visual_qa" value="1" class="mt-0.5 h-3.5 w-3.5 accent-green-300">
+              <span>📄 QA <em class="block font-normal not-italic tracking-normal text-green-200/75">Check pages.</em></span>
+            </label>
+            <label class="flex items-start gap-2">
+              <input type="checkbox" name="report_design_press" value="1" class="mt-0.5 h-3.5 w-3.5 accent-green-300" data-design-press-target="toggle" data-action="design-press#update">
+              <span>🕹️ PRESS <em class="block font-normal not-italic tracking-normal text-green-200/75">Design pass.</em></span>
+            </label>
+            <div class="grid gap-2 border border-dotted border-green-300/30 bg-black/70 p-2 font-mono text-[9px] uppercase tracking-[0.1em] text-green-100" data-design-press-target="panel" hidden>
+              <label class="grid gap-1"><span class="font-black">press template</span><select name="report_design_press_template" class="border border-dotted border-green-300/60 bg-black px-2 py-1.5 text-[10px] font-black text-green-50"><option value="market_one_sheet">Market one-sheet</option><option value="data_postcard">Data postcard</option><option value="executive_proposal">Executive proposal</option><option value="neighborhood_blitz">Neighborhood blitz</option></select></label>
+              <label class="grid gap-1"><span class="font-black">visual style</span><select name="report_design_press_style" class="border border-dotted border-green-300/60 bg-black px-2 py-1.5 text-[10px] font-black text-green-50"><option value="wizwiki_clean">WIZWIKI clean</option><option value="bold_postcard">Bold postcard</option><option value="glossy_cyber">Glossy cyber</option><option value="classic_print">Classic print</option></select></label>
+              <label class="grid gap-1"><span class="font-black">output</span><select name="report_design_press_output" class="border border-dotted border-green-300/60 bg-black px-2 py-1.5 text-[10px] font-black text-green-50"><option value="print_png_pdf">8.5x11 PNG + PDF</option><option value="canva_safe_png">Canva-safe PNG</option><option value="docx_visual_packet">DOCX + design packet</option></select></label>
+              <label class="grid gap-1"><span class="font-black">direction</span><textarea name="report_design_press_notes" rows="2" maxlength="280" placeholder="Optional design instruction, max 280 chars." class="border border-dotted border-green-300/60 bg-black px-2 py-1.5 text-[10px] font-bold normal-case tracking-normal text-green-50 placeholder:text-green-200/45"></textarea></label>
+            </div>
+          </div>
+          <p class="rpt-lab-panel-note">🤝 Client-ready proposal.</p>
+          <% if active_client_report.present? %>
+            <p class="mt-2 border border-dotted border-green-300/50 bg-green-950/25 px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.14em] text-green-100"><%= report_processing_status_label(active_client_report) %></p>
+          <% end %>
+        </div>
+
+        <div data-rpt-builder-target="panel" data-rpt-builder-audience="am" class="rpt-lab-panel rpt-lab-panel--am border border-dotted border-cyan-300/40 bg-cyan-950/15 p-3" hidden>
+          <div class="rpt-lab-panel-selectors">
+            <label for="report_embedder_am_<%= deal.id %>" class="rpt-lab-control">
+              <span>1 // embedder <b>★ default</b></span>
+              <select id="report_embedder_am_<%= deal.id %>" name="report_embedder_model" class="deal-report-model-select deal-report-model-select--am">
+                <% report_embedder_model_options.each do |label, model| %>
+                  <option value="<%= model %>" <%= "selected" if model == WizwikiSettings.report_embedder_model %>><%= label %></option>
+                <% end %>
+              </select>
+            </label>
+            <label for="report_local_model_am_<%= deal.id %>" class="rpt-lab-control">
+              <span>2 // local LLM <b>★ default</b></span>
+              <select id="report_local_model_am_<%= deal.id %>" name="report_local_model" class="deal-report-model-select deal-report-model-select--am">
+                <% report_local_model_options.each do |label, model| %>
+                  <option value="<%= model %>" <%= "selected" if model == WizwikiSettings.default_report_lane[:report_local_model] %>><%= label %></option>
+                <% end %>
+              </select>
+            </label>
+            <label for="report_challenger_am_<%= deal.id %>" class="rpt-lab-control">
+              <span>3 // challenger <b>review</b></span>
+              <select id="report_challenger_am_<%= deal.id %>" name="report_challenger_model" class="deal-report-model-select deal-report-model-select--am">
+                <% report_challenger_model_options.each do |label, model| %>
+                  <option value="<%= model %>" <%= "selected" if model == WizwikiSettings.default_challenger_model %>><%= label %></option>
+                <% end %>
+              </select>
+            </label>
+          </div>
+          <div class="mb-2 grid gap-2 border border-dotted border-cyan-300/30 bg-cyan-950/20 p-2 font-mono text-[9px] font-black uppercase tracking-[0.12em] text-cyan-100" data-controller="design-press">
+            <label class="flex items-start gap-2"><input type="checkbox" name="report_preflight_scan" value="1" class="mt-0.5 h-3.5 w-3.5 accent-cyan-300"><span>👁️ SCAN <em class="block font-normal not-italic tracking-normal text-cyan-200/75">Read images first.</em></span></label>
+            <label class="flex items-start gap-2"><input type="checkbox" name="report_post_review" value="1" class="mt-0.5 h-3.5 w-3.5 accent-cyan-300"><span>🧽 POLISH <em class="block font-normal not-italic tracking-normal text-cyan-200/75">Clean text pass.</em></span></label>
+            <label class="flex items-start gap-2"><input type="checkbox" name="report_page_visual_qa" value="1" class="mt-0.5 h-3.5 w-3.5 accent-cyan-300"><span>📄 QA <em class="block font-normal not-italic tracking-normal text-cyan-200/75">Check pages.</em></span></label>
+            <label class="flex items-start gap-2"><input type="checkbox" name="report_design_press" value="1" class="mt-0.5 h-3.5 w-3.5 accent-cyan-300" data-design-press-target="toggle" data-action="design-press#update"><span>🕹️ PRESS <em class="block font-normal not-italic tracking-normal text-cyan-200/75">Design pass.</em></span></label>
+            <div class="grid gap-2 border border-dotted border-cyan-300/30 bg-black/70 p-2 font-mono text-[9px] uppercase tracking-[0.1em] text-cyan-100" data-design-press-target="panel" hidden>
+              <label class="grid gap-1"><span class="font-black">press template</span><select name="report_design_press_template" class="border border-dotted border-cyan-300/60 bg-black px-2 py-1.5 text-[10px] font-black text-cyan-50"><option value="market_one_sheet">Market one-sheet</option><option value="data_postcard">Data postcard</option><option value="executive_proposal">Executive proposal</option><option value="neighborhood_blitz">Neighborhood blitz</option></select></label>
+              <label class="grid gap-1"><span class="font-black">visual style</span><select name="report_design_press_style" class="border border-dotted border-cyan-300/60 bg-black px-2 py-1.5 text-[10px] font-black text-cyan-50"><option value="wizwiki_clean">WIZWIKI clean</option><option value="bold_postcard">Bold postcard</option><option value="glossy_cyber">Glossy cyber</option><option value="classic_print">Classic print</option></select></label>
+              <label class="grid gap-1"><span class="font-black">output</span><select name="report_design_press_output" class="border border-dotted border-cyan-300/60 bg-black px-2 py-1.5 text-[10px] font-black text-cyan-50"><option value="print_png_pdf">8.5x11 PNG + PDF</option><option value="canva_safe_png">Canva-safe PNG</option><option value="docx_visual_packet">DOCX + design packet</option></select></label>
+              <label class="grid gap-1"><span class="font-black">direction</span><textarea name="report_design_press_notes" rows="2" maxlength="280" placeholder="Optional design instruction, max 280 chars." class="border border-dotted border-cyan-300/60 bg-black px-2 py-1.5 text-[10px] font-bold normal-case tracking-normal text-cyan-50 placeholder:text-cyan-200/45"></textarea></label>
+            </div>
+          </div>
+          <p class="rpt-lab-panel-note">🧭 Internal AM brief.</p>
+          <% if active_am_report.present? %>
+            <p class="mt-2 border border-dotted border-cyan-300/50 bg-cyan-950/25 px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.14em] text-cyan-100"><%= report_processing_status_label(active_am_report) %></p>
+          <% end %>
+        </div>
+
+        <div data-rpt-builder-target="panel" data-rpt-builder-audience="copy_maker" class="rpt-lab-panel rpt-lab-panel--copy border border-dotted border-fuchsia-300/50 bg-fuchsia-950/15 p-3" hidden>
+          <div class="rpt-lab-panel-selectors">
+            <label for="report_embedder_copy_<%= deal.id %>" class="rpt-lab-control">
+              <span>1 // embedder <b>★ default</b></span>
+              <select id="report_embedder_copy_<%= deal.id %>" name="report_embedder_model" class="deal-report-model-select">
+                <% report_embedder_model_options.each do |label, model| %>
+                  <option value="<%= model %>" <%= "selected" if model == WizwikiSettings.report_embedder_model %>><%= label %></option>
+                <% end %>
+              </select>
+            </label>
+            <label for="report_local_model_copy_<%= deal.id %>" class="rpt-lab-control" data-rpt-builder-target="localPrepControl">
+              <span>2 // local LLM <b>★ default</b></span>
+              <select id="report_local_model_copy_<%= deal.id %>" name="report_local_model" class="deal-report-model-select">
+                <% report_local_model_options.each do |label, model| %>
+                  <option value="<%= model %>" <%= "selected" if model == WizwikiSettings.default_report_lane[:report_local_model] %>><%= label %></option>
+                <% end %>
+              </select>
+            </label>
+            <label for="report_challenger_copy_<%= deal.id %>" class="rpt-lab-control">
+              <span>3 // challenger <b>review</b></span>
+              <select id="report_challenger_copy_<%= deal.id %>" name="report_challenger_model" class="deal-report-model-select">
+                <% report_challenger_model_options.each do |label, model| %>
+                  <option value="<%= model %>" <%= "selected" if model == WizwikiSettings.default_challenger_model %>><%= label %></option>
+                <% end %>
+              </select>
+            </label>
+          </div>
+          <div class="rpt-lab-copy-switches" aria-label="Copy Maker switches">
+            <label class="rpt-lab-switch">
+              <input type="checkbox" name="copy_maker_comm_kit" value="1" checked data-rpt-builder-target="commKitToggle">
+              <span>
+                <b>COMM KIT</b>
+                <em>3 text messages with varied tone/urgency + 2 friendly sales email templates.</em>
+              </span>
+            </label>
+            <div class="rpt-lab-switch rpt-lab-switch--direction" data-rpt-builder-target="commKitDirection" aria-disabled="false">
+              <span>
+                <b>COMM KIT DIRECTION</b>
+                <em>Choose who is speaking and who receives the staged text/email copy.</em>
+                <span class="mt-2 grid gap-2 sm:grid-cols-2">
+                  <label class="flex gap-2 border border-dotted border-fuchsia-200/40 bg-black/30 p-2">
+                    <input type="radio" name="copy_maker_comm_kit_direction" value="wizwiki_out" checked class="mt-1 accent-fuchsia-300">
+                    <span><strong class="text-fuchsia-100">WIZWIKI OUT</strong><br>Grounded outreach to the business owner using reviewed CRM and organization facts.</span>
+                  </label>
+                  <label class="flex gap-2 border border-dotted border-cyan-200/40 bg-black/30 p-2">
+                    <input type="radio" name="copy_maker_comm_kit_direction" value="client_out" class="mt-1 accent-cyan-300">
+                    <span><strong class="text-cyan-100">CLIENT OUT</strong><br>Client-branded copy the business can send from its own CRM to customers and prospects.</span>
+                  </label>
+                </span>
+              </span>
+            </div>
+            <label class="rpt-lab-switch">
+              <input type="checkbox" name="copy_maker_local_prep" value="1" checked data-rpt-builder-target="localPrepToggle">
+              <span>
+                <b>LOCAL LLM PREP</b>
+                <em>Use selected Qwen model for source-aware prep before the final copy payload. Turn off for payload-only copy tests.</em>
+              </span>
+            </label>
+          </div>
+          <p class="rpt-lab-panel-note">✒️ Local prep, selected cloud final.</p>
+          <% if active_copy_maker_report.present? %>
+            <p class="mt-2 border border-dotted border-fuchsia-300/50 bg-fuchsia-950/25 px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.14em] text-fuchsia-100"><%= report_processing_status_label(active_copy_maker_report) %></p>
+          <% end %>
+        </div>
+
+        </div>
+
+        <button type="submit" class="rpt-lab-create" data-report-timer-target="button">
+          <span data-report-timer-target="idle">▶ CREATE <b data-rpt-builder-target="buttonLabel">🤝 CLIENT</b></span>
+          <span data-report-timer-target="working" hidden>⏳ CREATE <b data-rpt-builder-target="workingLabel">🤝 CLIENT</b> <b data-report-timer-target="seconds">0s</b></span>
+        </button>
+      </form>
+    </div>
+  </details>
+<% else %>
+  <span class="deal-action-button deal-action-button--muted" title="Claim this deal before generating a report">RPT LOCK</span>
+<% end %>
+
+	              <% if latest_comm_stage.present? %>
+	                <button type="button" class="deal-action-button deal-action-button--lime deal-action-button--phone" title="Open staged COMMS LAB" aria-label="Open staged COMMS LAB for <%= company_name %>" data-open-comms-lab-id="comms-lab-<%= latest_comm_stage.id %>">☎</button>
+	              <% end %>
+
+	              <details class="relative report-kits-details">
+                <summary class="deal-action-button deal-action-button--blue deal-action-button--documents cursor-pointer list-none" title="Created documents and report kits" aria-label="Open documents for <%= company_name %>" data-report-kits-open>📄</summary>
+                <div class="report-kits-backdrop" aria-hidden="true" data-close-deal-flyout></div>
+                <div class="deal-flyout deal-flyout--reports report-kits-overlay border border-dotted border-blue-200/70 bg-black p-4 shadow-2xl shadow-black" role="dialog" aria-modal="true" aria-label="Created documents and report kits">
+                  <div class="report-kits-header">
+                    <div>
+                      <p class="report-kits-kicker">documents // report kits</p>
+                      <h4 class="report-kits-title"><%= company_name %></h4>
+                      <p class="report-kits-subtitle">Open the client document, review Canva assets, inspect media, or stage COMMS without leaving the deal page.</p>
+                    </div>
+                    <div class="report-kits-header-actions">
+                      <span class="report-kits-ready"><%= completed_report_count %> ready</span>
+                      <button type="button" class="report-kits-close border border-dotted border-white/50 bg-black px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.16em] text-white hover:bg-white hover:text-black" data-close-deal-flyout>close</button>
+                    </div>
+                  </div>
+
+                  <% if artifacts.any? %>
+                    <div class="report-kits-list">
+                      <% artifacts.each do |artifact| %>
+                        <% publisher = report_publisher(artifact) %>
+                        <% storage_key = artifact.storage_key.presence || publisher["storage_key"] %>
+                        <% file_url = artifact.file_url.presence || publisher["file_url"] %>
+                        <% quality_errors = report_quality_errors(artifact) %>
+                        <% canva_state = artifact.metadata.to_h.fetch("canva", {}).to_h %>
+                        <% build_timing = report_build_timing(artifact) %>
+                        <div class="report-kit-card">
+                          <p class="report-kit-eyebrow"><%= artifact.artifact_type.humanize %> // artifact #<%= artifact.id %> // deal #<%= artifact.crm_record_id %> // <%= artifact.status %></p>
+                          <p class="report-kit-title"><%= report_display_title(artifact) %></p>
+                          <p class="report-kit-meta"><%= artifact.created_at.strftime("%b %-d %l:%M %p") %> // completed <%= report_completed_at(artifact).presence || "pending" %> // <%= artifact.user&.display_name || "system" %></p>
+                          <p class="report-kit-build-time">build time // <%= report_build_time_summary(artifact) %></p>
+                          <div class="report-kit-actions report-kit-actions--primary">
+                            <% if canva_pdf_downloadable?(artifact) %>
+                              <%= link_to "OPEN PDF", canva_pdf_url(artifact), target: "_blank", rel: "noopener", data: { turbo: false }, class: "report-kit-action report-kit-action--pdf" %>
+                            <% end %>
+                            <% if report_document_downloadable?(artifact) %>
+                              <%= link_to "OPEN DOCX", report_document_preview_url(artifact), target: "_blank", rel: "noopener", data: { turbo: false }, class: "report-kit-action report-kit-action--docx" %>
+                            <% end %>
+                            <% if canva_kit_downloadable?(artifact) %>
+                              <%= link_to "KIT ZIP", canva_kit_url(artifact), data: { turbo: false }, class: "report-kit-action report-kit-action--kit" %>
+                            <% end %>
+                            <% if canva_output_downloadable?(artifact) %>
+                              <%= link_to "OUTPUT ZIP", canva_output_url(artifact), data: { turbo: false }, class: "report-kit-action report-kit-action--output" %>
+                            <% end %>
+                            <% if canva_kit_downloadable?(artifact) && !canva_output_downloadable?(artifact) %>
+                              <div class="report-kit-action-build" data-controller="canva-build">
+                                <%= button_to "BUILD CANVA", build_deal_report_canva_output_path(artifact), method: :post, form: { class: "contents", data: { action: "submit->canva-build#start" } }, class: "report-kit-action report-kit-action--build disabled:cursor-wait disabled:opacity-70", data: { canva_build_target: "button", turbo_confirm: "Approve this DOCX and Canva Build Kit, then build the Canva output package?", turbo_submits_with: "BUILDING CANVA" } %>
+                                <p hidden class="report-kit-build-status" data-canva-build-target="status">Canva build running <b data-canva-build-target="seconds">0s</b></p>
+                                <div class="canva-build-meter"><span></span></div>
+                              </div>
+                            <% end %>
+                          </div>
+                          <div class="report-kit-facts">
+                            <div>
+                              <span>Document size</span>
+                              <b><%= report_byte_size(artifact).present? ? number_to_human_size(report_byte_size(artifact).to_i) : "unknown" %></b>
+                            </div>
+                            <div>
+                              <span>Model</span>
+                              <b>selected <%= report_requested_model(artifact).presence || "unknown" %> // ran <%= report_actual_model(artifact).presence || "pending" %></b>
+                            </div>
+                            <div>
+                              <span>Embedder</span>
+                              <b><%= report_requested_embedder(artifact).presence || "not requested" %></b>
+                            </div>
+                            <div>
+                              <span>Quality</span>
+                              <b><%= report_logo_status(artifact) %> // <%= quality_errors.any? ? quality_errors.join("; ") : "passed" %></b>
+                            </div>
+                          </div>
+                          <% if report_model_mismatch?(artifact) %>
+                            <p class="report-kit-warning">model mismatch: Alice used fallback/default instead of selected model</p>
+                          <% end %>
+                          <details class="report-kit-debug">
+                            <summary>technical details</summary>
+                            <dl class="report-kit-debug-grid">
+                            <div><dt class="uppercase tracking-[0.14em] text-zinc-600">local path</dt><dd class="break-all text-zinc-300"><%= report_local_path(artifact).presence || "not reported" %></dd></div>
+                            <div><dt class="uppercase tracking-[0.14em] text-zinc-600">WIZWIKI url</dt><dd class="break-all text-zinc-300"><%= file_url.presence || "pending" %></dd></div>
+                            <div><dt class="uppercase tracking-[0.14em] text-zinc-600">storage key</dt><dd class="break-all text-zinc-300"><%= storage_key.presence || "pending" %></dd></div>
+                            <div>
+  <dt class="uppercase tracking-[0.14em] text-zinc-600">byte size / LLM</dt>
+  <dd class="text-zinc-300"><%= report_byte_size(artifact).present? ? number_to_human_size(report_byte_size(artifact).to_i) : "unknown" %> // selected <%= report_requested_model(artifact).presence || "unknown" %> // ran <%= report_actual_model(artifact).presence || "pending" %></dd>
+  <dd class="mt-1 text-lime-100">embedder // <%= report_requested_embedder(artifact).presence || "not requested" %></dd>
+  <% if report_model_mismatch?(artifact) %>
+    <dd class="mt-1 border border-dotted border-yellow-300/70 bg-yellow-300/10 px-2 py-1 text-yellow-100">model mismatch: Alice used fallback/default instead of selected model</dd>
+  <% end %>
+</div>
+                            <div>
+                              <dt class="uppercase tracking-[0.14em] text-zinc-600">timing</dt>
+                              <dd class="text-zinc-300">queue wait <%= report_duration_label(build_timing["queue_wait_seconds"]) %> // docx <%= report_duration_label(build_timing["docx_build_seconds"]) %> // kit <%= report_duration_label(build_timing["canva_kit_build_seconds"]) %> // elapsed <%= report_duration_label(build_timing["total_elapsed_seconds"]) %></dd>
+                              <% if build_timing["canva_output_seconds"].present? %>
+                                <dd class="mt-1 text-cyan-100">canva output // <%= report_duration_label(build_timing["canva_output_seconds"]) %></dd>
+                              <% end %>
+                            </div>
+                            <div><dt class="uppercase tracking-[0.14em] text-zinc-600">logo / quality</dt><dd class="text-zinc-300"><%= report_logo_status(artifact) %> // <%= quality_errors.any? ? quality_errors.join("; ") : "passed" %></dd></div>
+                          </dl>
+                          </details>
+                          <div class="report-kit-media">
+                            <div class="flex items-center justify-between gap-2">
+                              <p class="font-mono text-[9px] font-black uppercase tracking-[0.18em] text-orange-100">associated media</p>
+                              <span class="font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-500"><%= media_attachments.size %> files</span>
+                            </div>
+                            <% if media_attachments.any? %>
+                              <div class="mt-2 grid grid-cols-3 gap-2">
+                                <% media_attachments.first(6).each do |attachment| %>
+                                  <div class="border border-dotted border-white/20 bg-white/5 p-1">
+                                    <a href="<%= url_for(attachment) %>" target="_blank" rel="noopener" class="group block hover:border-orange-200">
+                                      <% if attachment.blob.content_type.to_s.start_with?("image/") %>
+                                        <div class="aspect-square overflow-hidden bg-black">
+                                          <%= image_tag url_for(attachment), alt: "#{attachment.filename} thumbnail", loading: "lazy", class: "h-full w-full object-cover" %>
+                                        </div>
+                                      <% else %>
+                                        <div class="grid aspect-square place-items-center bg-black font-mono text-[10px] font-black text-orange-100">
+                                          <%= deal_media_icon(attachment) %>
+                                        </div>
+                                      <% end %>
+                                      <p class="mt-1 truncate font-mono text-[9px] text-zinc-300 group-hover:text-white"><%= attachment.filename %></p>
+                                    </a>
+                                    <%= button_to "REMOVE", destroy_deal_media_path(deal, attachment), method: :delete, form_class: "mt-1", class: "w-full border border-dotted border-teal-300/60 bg-black px-1 py-1 font-mono text-[8px] font-black uppercase tracking-[0.12em] text-teal-100 hover:bg-teal-300 hover:text-black", data: { turbo_confirm: "Remove #{attachment.filename}?" } %>
+                                  </div>
+                                <% end %>
+                              </div>
+                              <% if media_attachments.size > 6 %>
+                                <p class="mt-2 font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-500">+ <%= media_attachments.size - 6 %> more in media folder</p>
+                              <% end %>
+                            <% else %>
+                              <p class="mt-2 border border-dotted border-white/15 p-2 font-mono text-[10px] text-zinc-500">No uploaded media associated yet.</p>
+                            <% end %>
+                          </div>
+<div class="report-kit-actions report-kit-actions--secondary">
+  <% if canva_pdf_downloadable?(artifact) %>
+    <%= link_to "OPEN PDF", canva_pdf_url(artifact), target: "_blank", rel: "noopener", data: { turbo: false }, class: "inline-block border border-dotted border-teal-200 bg-teal-950/30 px-2 py-1 font-mono text-[10px] font-black text-teal-100 hover:bg-teal-200 hover:text-black" %>
+  <% end %>
+  <% if report_document_downloadable?(artifact) %>
+    <%= link_to "OPEN DOCX", report_document_preview_url(artifact), target: "_blank", rel: "noopener", data: { turbo: false }, class: "inline-block border border-dotted border-white/50 px-2 py-1 font-mono text-[10px] font-black text-white hover:bg-white hover:text-black" %>
+  <% end %>
+  <% if canva_kit_downloadable?(artifact) %>
+    <%= link_to "KIT ZIP", canva_kit_url(artifact), data: { turbo: false }, class: "inline-block border border-dotted border-green-300 px-2 py-1 font-mono text-[10px] font-black text-green-100 hover:bg-green-300 hover:text-black" %>
+  <% end %>
+  <% if canva_output_downloadable?(artifact) %>
+    <%= link_to "OUTPUT ZIP", canva_output_url(artifact), data: { turbo: false }, class: "inline-block border border-dotted border-cyan-300 px-2 py-1 font-mono text-[10px] font-black text-cyan-100 hover:bg-cyan-300 hover:text-black" %>
+  <% end %>
+  <% if canva_kit_downloadable?(artifact) && !canva_output_downloadable?(artifact) %>
+    <div class="inline-grid gap-1" data-controller="canva-build">
+      <%= button_to "BUILD CANVA", build_deal_report_canva_output_path(artifact), method: :post, form: { class: "contents", data: { action: "submit->canva-build#start" } }, class: "inline-block border border-dotted border-pink-300 bg-black px-2 py-1 font-mono text-[10px] font-black text-pink-100 shadow-sm shadow-pink-300/30 hover:bg-pink-300 hover:text-black disabled:cursor-wait disabled:opacity-70", data: { canva_build_target: "button", turbo_confirm: "Approve this DOCX and Canva Build Kit, then build the Canva output package?", turbo_submits_with: "BUILDING CANVA" } %>
+      <p hidden class="font-mono text-[9px] uppercase tracking-[0.16em] text-pink-100" data-canva-build-target="status">Canva build running <b data-canva-build-target="seconds">0s</b></p>
+      <div class="canva-build-meter"><span></span></div>
+    </div>
+  <% end %>
+</div>
+<% if claimed_by_me && comm_kit_report?(artifact) %>
+  <% comm_stage = comm_stage_for_report(artifact) %>
+  <div class="mt-3 border border-dotted border-fuchsia-300/60 bg-fuchsia-950/20 p-3">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <p class="font-mono text-[9px] font-black uppercase tracking-[0.18em] text-fuchsia-100">COMMS staging // WIZWIKI COMMS</p>
+        <p class="mt-1 text-xs leading-5 text-zinc-300">Thumper picks one text and one email. Choose the best pair, then SAVE WORK to stage it for WIZWIKI COMMS. Nothing sends until someone opens the comm and approves the message.</p>
+      </div>
+      <% if comm_stage.present? %>
+        <span class="border border-dotted border-cyan-200/60 bg-black/40 px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.14em] text-cyan-100"><%= comm_stage.metadata.to_h["comm_kit_direction_label"].presence || artifact.metadata.to_h["copy_maker_comm_kit_direction_label"].presence || "WIZWIKI OUT" %></span>
+        <span class="border border-dotted border-fuchsia-200/60 px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.14em] <%= comm_stage_aircall_ready?(comm_stage) ? 'bg-green-950/30 text-green-100' : 'bg-black/40 text-fuchsia-100' %>"><%= comm_stage_status_label(comm_stage) %></span>
+      <% else %>
+        <%= button_to "☎ PREP COMMS", prepare_deal_report_comms_path(artifact), method: :post, form_class: "contents", class: "prep-comms-button comms-phone-action border-2 border-dotted border-lime-200/90 bg-fuchsia-600/25 px-5 py-3 font-mono text-[12px] font-black uppercase tracking-[0.16em] text-white shadow-lg shadow-fuchsia-400/30 hover:bg-lime-200 hover:text-black", data: { turbo_confirm: "Ask Thumper/local selector to stage COMM KIT copy for WIZWIKI COMMS review?", turbo_submits_with: "STAGING COMMS", comms_prep_deal_id: artifact.crm_record_id, comms_prep_report_id: artifact.id } %>
+      <% end %>
+    </div>
+
+    <% if comm_stage.present? %>
+      <% selected_sms = comm_stage_selected_sms(comm_stage).to_h %>
+      <% selected_email = comm_stage_selected_email(comm_stage).to_h %>
+      <% selected_contact = comm_stage_selected_contact(comm_stage).to_h %>
+      <% selected_phone = comm_stage_selected_phone(comm_stage).to_h %>
+      <% selected_recipient_email = comm_stage_selected_recipient_email(comm_stage).to_h %>
+      <% selected_address = comm_stage_selected_address(comm_stage).to_h %>
+      <div class="mt-3 grid gap-2 lg:grid-cols-2">
+        <div class="border border-dotted border-white/20 bg-black/45 p-2">
+          <p class="font-mono text-[9px] font-black uppercase tracking-[0.15em] text-lime-100">Thumper favorite text</p>
+          <p class="mt-1 text-xs leading-5 text-white"><%= selected_sms["body"].presence || "No SMS selected yet." %></p>
+          <p class="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-500"><%= selected_sms["tone"] %> // <%= selected_sms["urgency"] %></p>
+        </div>
+        <div class="border border-dotted border-white/20 bg-black/45 p-2">
+          <p class="font-mono text-[9px] font-black uppercase tracking-[0.15em] text-cyan-100">Thumper favorite email</p>
+          <p class="mt-1 font-mono text-[10px] font-black text-white">Subject: <%= selected_email["subject"].presence || "pending" %></p>
+          <p class="mt-1 text-xs leading-5 text-zinc-200"><%= selected_email["body"].presence || "No email selected yet." %></p>
+        </div>
+      </div>
+      <div class="mt-3 border border-dotted border-amber-200/35 bg-black/35 p-2">
+        <p class="font-mono text-[9px] font-black uppercase tracking-[0.16em] text-amber-100">Recipient intelligence</p>
+        <p class="mt-1 text-xs leading-5 text-zinc-300"><%= comm_stage.metadata.to_h.dig("contact_intelligence", "ranking_note").presence || "Ranked from associated CRM records, available phone/email fields, and recent communications." %></p>
+        <div class="mt-2 grid gap-2 lg:grid-cols-4">
+          <div class="border border-dotted border-white/15 bg-white/5 p-2">
+            <p class="font-mono text-[9px] uppercase tracking-[0.14em] text-amber-100">Selected contact</p>
+            <p class="mt-1 text-xs font-black text-white"><%= selected_contact["name"].presence || "No contact selected" %></p>
+            <p class="mt-1 text-[11px] leading-4 text-zinc-400"><%= [selected_contact["title"], selected_contact["company"], selected_contact["association_type"]].compact_blank.join(" // ") %></p>
+          </div>
+          <div class="border border-dotted border-white/15 bg-white/5 p-2">
+            <p class="font-mono text-[9px] uppercase tracking-[0.14em] text-lime-100">Selected phone</p>
+            <p class="mt-1 text-xs font-black text-white"><%= selected_phone["value"].presence || "No phone selected" %></p>
+            <p class="mt-1 text-[11px] leading-4 text-zinc-400"><%= selected_phone["name"] %></p>
+          </div>
+          <div class="border border-dotted border-white/15 bg-white/5 p-2">
+            <p class="font-mono text-[9px] uppercase tracking-[0.14em] text-cyan-100">Selected email</p>
+            <p class="mt-1 break-all text-xs font-black text-white"><%= selected_recipient_email["value"].presence || "No email selected" %></p>
+            <p class="mt-1 text-[11px] leading-4 text-zinc-400"><%= selected_recipient_email["name"] %></p>
+          </div>
+          <div class="border border-dotted border-white/15 bg-white/5 p-2">
+            <p class="font-mono text-[9px] uppercase tracking-[0.14em] text-pink-100">Selected address</p>
+            <p class="mt-1 text-xs font-black leading-5 text-white"><%= selected_address["value"].presence || "No address selected" %></p>
+            <p class="mt-1 text-[11px] leading-4 text-zinc-400"><%= selected_address["name"] %></p>
+          </div>
+        </div>
+      </div>
+
+      <% comms_sender_name = comm_stage.metadata.to_h.dig("sender_profile", "name").presence || comm_stage.metadata.to_h["sender_name"].presence || current_user&.display_name.to_s.presence || "WIZWIKI Marketing" %>
+      <% comms_sender_name = comms_sender_name.to_s.squish.first(80) %>
+      <% comms_sender_phone = comm_stage.metadata.to_h.dig("sender_profile", "phone").presence || comm_stage.metadata.to_h["sender_phone"].presence || current_user&.display_phone_number.to_s.presence %>
+      <% sender_placeholder_pattern = /\[(?:your name|sender name|name)\]/i %>
+      <% sender_phone_placeholder_pattern = /\[(?:your phone|sender phone|phone number|callback number)\]/i %>
+      <% render_sender_copy = ->(value) { value.to_s.gsub(sender_placeholder_pattern, comms_sender_name).gsub(sender_phone_placeholder_pattern, comms_sender_phone.presence || "reply here") } %>
+      <% composed_sms_body = render_sender_copy.call(comm_stage.metadata.to_h["composed_sms_body"].presence || selected_sms["body"]) %>
+      <% composed_email_subject = render_sender_copy.call(comm_stage.metadata.to_h["composed_email_subject"].presence || selected_email["subject"]) %>
+      <% composed_email_body = render_sender_copy.call(comm_stage.metadata.to_h["composed_email_body"].presence || selected_email["body"]) %>
+      <% comms_composition_edited = ActiveModel::Type::Boolean.new.cast(comm_stage.metadata.to_h["composition_edited"]) %>
+	      <details id="comms-lab-<%= comm_stage.id %>" class="relative mt-3 comms-lab-details" data-controller="comms-lab">
+	        <summary class="comms-phone-action inline-grid cursor-pointer place-items-center border border-dotted border-lime-300 bg-lime-950/35 px-5 py-3 font-mono text-[12px] font-black uppercase tracking-[0.14em] text-lime-100 shadow-sm shadow-lime-300/25 hover:bg-lime-300 hover:text-black">
+	          ☎ OPEN COMMS LAB
+	        </summary>
+        <div class="comms-lab-backdrop"></div>
+        <div class="deal-flyout deal-flyout--report comms-lab-overlay" role="dialog" aria-modal="true" aria-label="COMMS LAB">
+          <%= form_with url: run_deal_comms_path(comm_stage), method: :post, class: "comms-lab-form", data: { turbo_confirm: "Save this contact, text, and email for the Run All Calls batch? This will not send messages yet." } do %>
+            <div class="comms-lab-header">
+              <div>
+                <p class="comms-lab-kicker">Thumper // COMMS LAB</p>
+                <h3 class="comms-lab-title"><%= deal_company_name(artifact.crm_record) %></h3>
+                <p class="comms-lab-subtitle">Pick the recipient, compose the text, compose the email, then save the work for the calls batch.</p>
+              </div>
+              <div class="comms-lab-sender">
+                <span>Sender profile</span>
+                <b><%= comms_sender_name %></b>
+                <small><%= comms_sender_phone.presence || "phone not set" %> // <%= link_to "edit", edit_profile_path, class: "text-cyan-100 underline decoration-dotted underline-offset-4" %></small>
+                <%= hidden_field_tag :sender_name_override, comms_sender_name, data: { comms_lab_target: "senderName" } %>
+                <%= hidden_field_tag :sender_phone, comms_sender_phone, data: { comms_lab_target: "senderPhone" } %>
+              </div>
+              <div class="comms-lab-status">
+                <span><%= comm_stage.metadata.to_h["comm_kit_direction_label"].presence || "WIZWIKI OUT" %></span>
+                <span><%= comm_stage.status.to_s.humanize %></span>
+              </div>
+              <button type="button" class="comms-lab-close" data-action="comms-lab#close">CLOSE</button>
+            </div>
+
+            <div class="comms-lab-body">
+              <section class="comms-lab-pane comms-lab-pane--contacts">
+                <div class="comms-lab-pane-head">
+                  <p>Recipient Router</p>
+                  <span>ranked from CRM + recent comms</span>
+                </div>
+                <div class="comms-lab-route">
+                  <div>
+                    <span>CONTACT</span>
+                    <b><%= selected_contact["name"].presence || "Choose contact" %></b>
+                  </div>
+                  <div>
+                    <span>TEXT TO</span>
+                    <b><%= selected_phone["value"].presence || "Choose phone" %></b>
+                  </div>
+                  <div>
+                    <span>EMAIL TO</span>
+                    <b><%= selected_recipient_email["value"].presence || "Choose email" %></b>
+                  </div>
+                  <div>
+                    <span>ADDRESS</span>
+                    <b><%= selected_address["value"].presence || "Review address" %></b>
+                  </div>
+                </div>
+
+                <div class="comms-lab-choice-list">
+                  <p class="comms-lab-choice-title">Contact name</p>
+                  <% if comm_stage_contact_options(comm_stage).present? %>
+                    <% comm_stage_contact_options(comm_stage).each do |option| %>
+                      <% option = option.to_h %>
+                      <label class="comms-lab-choice">
+                        <%= radio_button_tag :selected_contact_id, option["id"], option["id"].to_s == selected_contact["id"].to_s, class: "accent-amber-300" %>
+                        <span><b>#<%= option["rank"] %> <%= option["name"] %></b><em><%= [option["title"], option["record_type"], option["association_type"]].compact_blank.join(" // ") %></em><small><%= option["reason"] %></small></span>
+                      </label>
+                    <% end %>
+                  <% else %>
+                    <p class="comms-lab-empty">No associated contact candidates found.</p>
+                  <% end %>
+                </div>
+
+                <div class="comms-lab-choice-list">
+                  <p class="comms-lab-choice-title">Text number</p>
+                  <% if comm_stage_phone_options(comm_stage).present? %>
+                    <% comm_stage_phone_options(comm_stage).each do |option| %>
+                      <% option = option.to_h %>
+                      <label class="comms-lab-choice">
+                        <%= radio_button_tag :selected_phone_id, option["id"], option["id"].to_s == selected_phone["id"].to_s, class: "accent-lime-300" %>
+                        <span><b><%= option["name"] %></b><em><%= option["value"] %></em><small><%= option["reason"] %></small></span>
+                      </label>
+                    <% end %>
+                  <% else %>
+                    <p class="comms-lab-empty">No phone found in associated CRM records.</p>
+                  <% end %>
+                </div>
+
+                <div class="comms-lab-choice-list">
+                  <p class="comms-lab-choice-title">Email address</p>
+                  <% if comm_stage_recipient_email_options(comm_stage).present? %>
+                    <% comm_stage_recipient_email_options(comm_stage).each do |option| %>
+                      <% option = option.to_h %>
+                      <label class="comms-lab-choice">
+                        <%= radio_button_tag :selected_recipient_email_id, option["id"], option["id"].to_s == selected_recipient_email["id"].to_s, class: "accent-cyan-300" %>
+                        <span><b><%= option["name"] %></b><em class="break-all"><%= option["value"] %></em><small><%= option["reason"] %></small></span>
+                      </label>
+                    <% end %>
+                  <% else %>
+                    <p class="comms-lab-empty">No email found in associated CRM records.</p>
+                  <% end %>
+                </div>
+
+                <div class="comms-lab-choice-list">
+                  <p class="comms-lab-choice-title">Associated address</p>
+                  <% if comm_stage_address_options(comm_stage).present? %>
+                    <% comm_stage_address_options(comm_stage).each do |option| %>
+                      <% option = option.to_h %>
+                      <label class="comms-lab-choice">
+                        <%= radio_button_tag :selected_address_id, option["id"], option["id"].to_s == selected_address["id"].to_s, class: "accent-pink-300" %>
+                        <span><b><%= option["name"] %></b><em><%= option["value"] %></em><small><%= option["reason"] %></small></span>
+                      </label>
+                    <% end %>
+                  <% else %>
+                    <p class="comms-lab-empty">No address found in associated CRM records.</p>
+                  <% end %>
+                </div>
+              </section>
+
+              <section class="comms-lab-pane comms-lab-pane--sms">
+                <div class="comms-lab-pane-head">
+                  <p>Text Builder</p>
+                  <span>choose one, then edit live</span>
+                </div>
+                <div class="comms-lab-copy-options">
+                  <% comm_stage_sms_options(comm_stage).each do |option| %>
+                    <% option = option.to_h %>
+                    <label class="comms-lab-copy-option">
+                      <%= radio_button_tag :selected_sms_id, option["id"], option["id"].to_s == selected_sms["id"].to_s, class: "accent-fuchsia-300", data: { action: "change->comms-lab#selectSms", comms_lab_body: option["body"].to_s } %>
+                      <span><b><%= option["label"].presence || option["id"] %></b><em><%= option["tone"] %> // <%= option["urgency"] %></em><small><%= render_sender_copy.call(option["body"]) %></small></span>
+                    </label>
+                  <% end %>
+                </div>
+                <label class="comms-lab-editor">
+                  <span>Final text body</span>
+                  <%= text_area_tag :sms_body_override, composed_sms_body, rows: 9, maxlength: 700, data: { comms_lab_target: "smsBody", comms_lab_template: comms_composition_edited ? composed_sms_body : selected_sms["body"].to_s } %>
+                </label>
+              </section>
+
+              <section class="comms-lab-pane comms-lab-pane--email">
+                <div class="comms-lab-pane-head">
+                  <p>Email Builder</p>
+                  <span>subject + body are editable</span>
+                </div>
+                <div class="comms-lab-copy-options">
+                  <% comm_stage_email_options(comm_stage).each do |option| %>
+                    <% option = option.to_h %>
+                    <label class="comms-lab-copy-option">
+                      <%= radio_button_tag :selected_email_id, option["id"], option["id"].to_s == selected_email["id"].to_s, class: "accent-cyan-300", data: { action: "change->comms-lab#selectEmail", comms_lab_subject: option["subject"].to_s, comms_lab_body: option["body"].to_s } %>
+                      <span><b><%= option["label"].presence || option["id"] %></b><em>Subject: <%= render_sender_copy.call(option["subject"]) %></em><small><%= render_sender_copy.call(option["body"]) %></small></span>
+                    </label>
+                  <% end %>
+                </div>
+                <label class="comms-lab-editor comms-lab-editor--subject">
+                  <span>Final email subject</span>
+                  <%= text_field_tag :email_subject_override, composed_email_subject, maxlength: 160, data: { comms_lab_target: "emailSubject", comms_lab_template: comms_composition_edited ? composed_email_subject : selected_email["subject"].to_s } %>
+                </label>
+                <label class="comms-lab-editor">
+                  <span>Final email body</span>
+                  <%= text_area_tag :email_body_override, composed_email_body, rows: 11, maxlength: 3_000, data: { comms_lab_target: "emailBody", comms_lab_template: comms_composition_edited ? composed_email_body : selected_email["body"].to_s } %>
+                </label>
+              </section>
+            </div>
+
+            <div class="comms-lab-footer">
+              <% comm_kit_source_model = comm_stage.metadata.to_h["comm_kit_source_model"].presence %>
+              <p>Source // <%= comm_stage.metadata.to_h["comm_kit_source"].presence || "unknown" %><%= comm_kit_source_model ? " // #{comm_kit_source_model}" : "" %></p>
+              <p>Selector // <%= comm_stage.metadata.to_h["selector_provider"] %> <%= comm_stage.metadata.to_h["selector_model"] %> // <%= comm_stage.metadata.to_h["selection_reason"] %></p>
+              <%= submit_tag comm_stage_aircall_ready?(comm_stage) ? "UPDATE SAVED WORK" : "SAVE WORK", class: "comms-lab-submit" %>
+            </div>
+          <% end %>
+        </div>
+      </details>
+    <% end %>
+  </div>
+<% end %>
+<% if canva_output_downloadable?(artifact) %>
+  <p class="mt-2 font-mono text-[10px] text-cyan-200">Canva output package ready. PDF, DOCX, kit, design links, and exports are bundled.</p>
+<% elsif canva_kit_downloadable?(artifact) %>
+  <% canva_status = canva_state["status"].to_s %>
+  <% if canva_status == "failed" %>
+    <div class="mt-2 border border-dotted border-teal-300/70 bg-teal-950/30 p-2">
+      <p class="font-mono text-[10px] font-black uppercase tracking-[0.16em] text-teal-100">Canva build stopped</p>
+      <p class="mt-1 text-xs leading-5 text-teal-100"><%= canva_state["message"].presence || "Canva returned an error before the output package was created." %></p>
+      <p class="mt-1 font-mono text-[10px] text-zinc-300">The DOCX and Canva Kit are safe. Press <span class="text-pink-100">BUILD CANVA</span> again after the issue is fixed.</p>
+    </div>
+  <% elsif canva_status.present? && canva_status != "ready" %>
+    <div class="mt-2 border border-dotted border-cyan-300/50 bg-cyan-950/20 p-2">
+      <p class="font-mono text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100"><%= canva_status_label(artifact) %></p>
+      <p class="mt-1 text-xs leading-5 text-zinc-300"><%= canva_state["message"].presence || "Canva build is in progress or waiting on the next step." %></p>
+    </div>
+  <% else %>
+    <div class="mt-2 border border-dotted border-pink-300/40 bg-pink-950/20 p-2">
+      <p class="font-mono text-[10px] font-black uppercase tracking-[0.16em] text-pink-100">Ready for approval</p>
+      <p class="mt-1 text-xs leading-5 text-zinc-300">Review the DOCX and Canva Kit. Press <span class="font-mono text-pink-100">BUILD CANVA</span> to create the Canva output package.</p>
+      <% unless @canva_template_configured %>
+        <p class="mt-1 font-mono text-[10px] text-yellow-100">No brand template yet. BUILD CANVA will import Alice's DOCX into Canva, then export and package the result.</p>
+      <% end %>
+    </div>
+  <% end %>
+<% elsif canva_state.present? %>
+  <p class="mt-2 font-mono text-[10px] text-yellow-100"><%= canva_status_label(artifact) %></p>
+<% elsif storage_key.present? %>
+  <p class="mt-2 break-all font-mono text-[10px] text-zinc-400">DOCX ready. Waiting on Canva Build Kit zip.</p>
+<% else %>
+  <p class="mt-2 font-mono text-[10px] text-zinc-500">Download pending.</p>
+<% end %>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <p class="mt-3 border border-dotted border-white/20 p-2 font-mono text-[10px] text-zinc-500">No report kits created yet.</p>
+                  <% end %>
+                </div>
+              </details>
+            </div>
+            <% if watch_artifact.present? %>
+              <div class="h-24 overflow-y-auto border border-dotted border-lime-300/35 bg-black/75 px-2 py-2 font-mono text-[8px] leading-3 text-lime-100 shadow-inner shadow-lime-950/60" aria-label="Report processing watch output">
+                <div class="mb-1 flex items-center justify-between gap-2 border-b border-dotted border-lime-300/20 pb-1 text-[7px] font-black uppercase tracking-[0.18em] text-lime-300/75">
+                  <span>AUTOS WATCH // DEAL <%= deal.id %></span>
+                  <span><%= watch_artifact.updated_at.strftime("%H:%M:%S") %></span>
+                </div>
+                <% report_watch_lines(watch_artifact).each do |line| %>
+                  <p class="break-words"><%= line %></p>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </article>
+      <% end %>
+
+      <% if @deals.blank? %>
+        <div class="col-span-full border border-dotted border-white/30 bg-black/35 p-6 text-zinc-300">
+          <p class="font-mono text-sm font-black uppercase tracking-[0.16em] text-white">No <%= @active_lead_source_label.downcase %> leads match this view yet.</p>
+          <% if @active_lead_source == "sam_tickets" %>
+            <p class="mt-2 text-sm text-zinc-400">SAM ticket cards appear from the existing ticket-backed lane. Use the 90-day contact sync for contact-backed sources.</p>
+          <% else %>
+            <p class="mt-2 text-sm text-zinc-400">Run <%= @active_lead_source_label %> contact sync to search HubSpot contacts created in the last 90 days and populate this lane.</p>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </turbo-frame>
+</section>

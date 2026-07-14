@@ -1,0 +1,66 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+ENV["WIZWIKI_WEATHER_LIVE_ORDERS_ENABLED"] = ENV.fetch("WIZWIKI_WEATHER_LIVE_ORDERS_ENABLED", "false")
+ENV["KALSHI_LIVE_ORDERS_ENABLED"] = ENV.fetch("KALSHI_LIVE_ORDERS_ENABLED", "false")
+
+require "json"
+require_relative "../config/environment"
+
+started_at = Time.current
+results = {
+  ok: true,
+  live_orders_enabled: defined?(Kalshi::WeatherAutopilot) ? Kalshi::WeatherAutopilot.live_orders_enabled? : nil,
+  include_leads: %w[1 true yes on].include?(ENV["WIZWIKI_WEATHER_MACHINE_INCLUDE_LEADS"].to_s.downcase),
+  include_calibration: %w[1 true yes on].include?(ENV["WIZWIKI_WEATHER_MACHINE_INCLUDE_CALIBRATION"].to_s.downcase),
+  started_at: started_at.iso8601,
+  steps: []
+}
+results[:mode] = results[:live_orders_enabled] ? "live_orders" : "dry_run"
+
+steps = []
+steps << ["lead_signal_sync", Weather::LeadSignalSyncJob] if results[:include_leads]
+steps << ["market_scout", Weather::MarketScoutJob]
+steps << ["prediction_calibration", Weather::PredictionCalibrationJob] if results[:include_calibration]
+steps << ["autopilot", Weather::AutopilotJob]
+
+steps.each do |name, job_class|
+  step_started = Time.current
+  job_class.perform_now
+  results[:steps] << {
+    name: name,
+    ok: true,
+    duration_seconds: (Time.current - step_started).round(2)
+  }
+rescue StandardError => error
+  results[:ok] = false
+  results[:steps] << {
+    name: name,
+    ok: false,
+    error_class: error.class.name,
+    error: error.message.to_s.truncate(500),
+    duration_seconds: (Time.current - step_started).round(2)
+  }
+end
+
+if defined?(KalshiWeatherPrediction) && KalshiWeatherPrediction.storage_ready?
+  results[:predictions] = {
+    total: KalshiWeatherPrediction.count,
+    open: KalshiWeatherPrediction.open_predictions.count,
+    open_by_action: KalshiWeatherPrediction.open_predictions.group(:action).count
+  }
+end
+
+if defined?(KalshiWeatherWager) && KalshiWeatherWager.storage_ready?
+  results[:wagers] = {
+    total: KalshiWeatherWager.count,
+    open: KalshiWeatherWager.open_journal.count,
+    today: KalshiWeatherWager.where(budget_date: Time.zone.today).count,
+    by_status: KalshiWeatherWager.group(:status).count,
+    by_execution_mode: KalshiWeatherWager.group(:execution_mode).count
+  }
+end
+
+results[:finished_at] = Time.current.iso8601
+results[:duration_seconds] = (Time.current - started_at).round(2)
+puts JSON.pretty_generate(results)

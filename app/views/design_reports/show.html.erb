@@ -1,0 +1,36 @@
+<% content_for :title, @design_report.display_title %>
+
+<section class="design-dark-panel border-2 border-dotted p-5">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <p class="font-mono text-xs uppercase tracking-[0.35em] text-teal-500">design report</p>
+      <h1 class="mt-2 font-mono text-4xl font-black tracking-[-0.06em]"><%= @design_report.display_title %></h1>
+      <p class="mt-3 font-mono text-sm text-zinc-400"><%= @design_report.file_name.presence || "uploaded CSV" %> // <%= @design_report.row_count %> rows // <%= @design_report.user.display_name %></p>
+    </div>
+    <%= link_to "Back to Design Queue", design_reports_path, class: "design-soft-button border border-dotted border-white/40 px-5 py-3 font-mono text-[11px] font-bold text-white" %>
+  </div>
+
+  <dl class="mt-6 grid gap-4 md:grid-cols-4">
+    <% [["New", @design_report.metadata.to_h["created_count"].to_i], ["Updated", @design_report.metadata.to_h["updated_count"].to_i], ["Skipped", @design_report.metadata.to_h["skipped_count"].to_i], ["Columns", @design_report.headers.length]].each do |label, value| %>
+      <div class="design-dark-panel border border-dotted p-4">
+        <dt class="font-mono text-xs uppercase tracking-[0.2em] text-zinc-400"><%= label %></dt>
+        <dd class="mt-2 font-mono text-3xl text-white"><%= value %></dd>
+      </div>
+    <% end %>
+  </dl>
+</section>
+
+<section class="mt-6 border border-dotted border-white/50 bg-black p-5">
+  <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-teal-500">rows converted to objects</p>
+  <div class="mt-5 overflow-hidden border border-dotted border-white/40">
+    <% @design_orders.each do |order| %>
+      <%= link_to design_order_path(order), class: "design-hover-tile grid gap-2 border-b border-dotted border-white/20 p-4 md:grid-cols-[90px_1fr_170px_150px_120px]" do %>
+        <span class="font-mono text-xs text-teal-400">row <%= order.row_number %></span>
+        <strong><%= order.item_name %></strong>
+        <span><%= order.customer_email.presence || "no customer email" %></span>
+        <span><%= order.product_name.presence || "product unknown" %></span>
+        <span><%= order.start_date || "no start" %></span>
+      <% end %>
+    <% end %>
+  </div>
+</section>

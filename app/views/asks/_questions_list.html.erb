@@ -1,0 +1,5 @@
+<% if recent_questions.present? %>
+  <%= render partial: "question", collection: recent_questions, as: :question %>
+<% else %>
+  <p id="autos_questions_empty" class="border border-dotted border-white/30 bg-white/5 p-4 text-zinc-300">No questions queued yet.</p>
+<% end %>

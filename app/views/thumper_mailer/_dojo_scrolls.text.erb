@@ -1,0 +1,24 @@
+<% if @dojo_scrolls.present? %>
+Thumper DOJO training scrolls
+-------------------------
+Training links shared with this digest:
+
+<% @dojo_scrolls.each_with_index do |dojo, index| %>
+<%= index + 1 %>. <%= dojo[:date_label].presence || dojo[:date].presence || dojo[:doc_name].presence || "Dojo scroll" %>
+<% if dojo[:doc_name].present? %>Document: <%= dojo[:doc_name] %>
+<% end %>Scorecards: <%= dojo[:scorecards].to_i %>
+Pass / review: <%= dojo[:pass_count].to_i %> / <%= dojo[:review_count].to_i %><% if dojo[:average_score].present? %>
+Average score: <%= dojo[:average_score] %><% end %>
+<% full_day_url = dojo[:full_day_url].presence || dojo[:url].presence %>
+<% full_day_title = dojo[:full_day_title].presence || dojo[:doc_name].presence || "Full Day Thumper DOJO Scroll" %>
+<% session_url = dojo[:session_url].presence || dojo[:session_doc_url].presence %>
+<% session_title = dojo[:session_title].presence || dojo[:session_doc_name].presence || "Thumper DOJO Session Scroll" %>
+<% if full_day_url.present? %>Full Day scroll: <%= full_day_title %> - <%= full_day_url %>
+<% end %>
+<% if session_url.present? %>Session scroll: <%= session_title %> - <%= session_url %>
+<% end %>
+<% end %>
+<% dojo_folder_url = @dojo_scrolls.find { |scroll| scroll[:folder_url].present? }&.[](:folder_url) %>
+<% if dojo_folder_url.present? %>Thumper DOJO folder: <%= dojo_folder_url %>
+<% end %>
+<% end %>

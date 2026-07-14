@@ -1,0 +1,38 @@
+<% content_for :title, "Create Account" %>
+
+<section class="mx-auto max-w-3xl border-2 border-dotted border-teal-600 bg-black p-6 shadow-2xl shadow-teal-950/50 sm:p-8">
+  <p class="font-mono text-xs font-bold tracking-[0.45em] text-teal-500">scribe portal // CAMPAIGN CRM</p>
+  <h1 class="mt-3 font-mono text-4xl font-black tracking-[-0.06em] text-white">Create your Campaign CRM account.</h1>
+  <p class="mt-4 font-mono text-sm leading-7 text-zinc-300">
+    Use your work email. It must match the active company employee roster before the account can enter the workspace.
+  </p>
+
+  <%= form_with model: @user, url: registration_path, class: "mt-8 grid gap-5" do |form| %>
+    <div>
+      <%= form.label :name, "Name", class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+      <%= form.text_field :name, autocomplete: "name", class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-4 text-white" %>
+    </div>
+
+    <div>
+      <%= form.label :email_address, "Email", class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+      <%= form.email_field :email_address, required: true, autocomplete: "username", class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-4 text-white" %>
+    </div>
+
+    <div class="grid gap-5 sm:grid-cols-2">
+      <div>
+        <%= form.label :password, "Password", class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+        <%= form.password_field :password, required: true, autocomplete: "new-password", maxlength: 72, class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-4 text-white" %>
+      </div>
+
+      <div>
+        <%= form.label :password_confirmation, "Confirm", class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+        <%= form.password_field :password_confirmation, required: true, autocomplete: "new-password", maxlength: 72, class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-4 text-white" %>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <%= form.submit "Create account", class: "cursor-pointer border border-dotted border-white/50 bg-teal-700 px-6 py-4 font-mono text-[11px] font-black uppercase tracking-[0.18em] text-white hover:bg-white hover:text-black" %>
+      <%= link_to "Already confirmed? Sign in", new_session_path, class: "font-mono text-sm font-bold text-teal-400 hover:text-white" %>
+    </div>
+  <% end %>
+</section>

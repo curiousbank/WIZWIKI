@@ -1,0 +1,52 @@
+<section class="grid gap-6 lg:grid-cols-[1fr_340px]">
+  <article class="border-2 border-dotted border-teal-600 bg-black p-5">
+    <p class="font-mono text-xs uppercase tracking-[0.35em] text-teal-500"><%= @record.record_type %></p>
+    <h1 class="mt-2 font-mono text-4xl font-black tracking-[-0.06em]"><%= @record.name %></h1>
+
+    <dl class="mt-6 grid gap-4 md:grid-cols-2">
+      <% [["Email", @record.email], ["Phone", @record.phone], ["Domain", @record.domain], ["Stage", @record.stage], ["Status", @record.status], ["Amount", @record.amount], ["Close date", @record.close_date], ["Owner", @record.owner&.display_name]].each do |label, value| %>
+        <div class="border border-dotted border-white/30 bg-white/5 p-4">
+          <dt class="font-mono text-xs uppercase tracking-[0.2em] text-zinc-400"><%= label %></dt>
+          <dd class="mt-2 text-white"><%= value.presence || "empty" %></dd>
+        </div>
+      <% end %>
+    </dl>
+
+    <div class="mt-6 border border-dotted border-white/40 bg-white/5 p-5">
+      <h2 class="font-mono font-black text-teal-400">Custom properties</h2>
+      <div class="mt-4 grid gap-3">
+        <% @property_definitions.each do |definition| %>
+          <p class="flex flex-wrap justify-between gap-3 border-b border-dotted border-white/20 pb-2">
+            <span class="text-zinc-400"><%= definition.label %></span>
+            <strong><%= @record.property_value(definition.key).presence || "empty" %></strong>
+          </p>
+        <% end %>
+        <% if @property_definitions.blank? %>
+          <p class="text-zinc-300">No custom properties defined for <%= @record.record_type.pluralize %>.</p>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="mt-6 flex flex-wrap gap-3">
+      <%= link_to "Edit", edit_crm_record_path(@record), class: "border border-dotted border-white/50 bg-teal-700 px-5 py-3 font-mono text-[11px] font-black text-white hover:bg-white hover:text-black" %>
+      <%= link_to "Back", crm_records_path(record_type: @record.record_type), class: "border border-dotted border-white/40 px-5 py-3 font-mono text-[11px] font-bold text-white hover:bg-teal-700" %>
+      <%= button_to "Archive", crm_record_path(@record), method: :delete, class: "border border-dotted border-teal-500 px-5 py-3 font-mono text-[11px] font-bold text-teal-100 hover:bg-teal-700" %>
+    </div>
+  </article>
+
+  <aside class="border border-dotted border-teal-500 bg-teal-950/40 p-5">
+    <p class="font-mono text-[10px] uppercase tracking-[0.35em] text-teal-300">data hygiene</p>
+    <h2 class="mt-2 font-mono text-xl font-black text-white">Duplicate check</h2>
+    <div class="mt-4 grid gap-3">
+      <% @duplicate_candidates.each do |candidate| %>
+        <%= link_to crm_record_path(candidate.duplicate_record), class: "block border border-dotted border-white/30 bg-black/50 p-4 hover:bg-teal-700" do %>
+          <strong><%= candidate.duplicate_record.name %></strong>
+          <span class="mt-1 block text-sm text-teal-100"><%= candidate.score.to_i %>% // <%= candidate.reasons.join(", ") %></span>
+        <% end %>
+      <% end %>
+      <% if @duplicate_candidates.blank? %>
+        <p class="text-teal-50/80">No open duplicate candidates.</p>
+      <% end %>
+    </div>
+  </aside>
+</section>

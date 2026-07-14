@@ -1,0 +1,55 @@
+<% test = local_assigns[:ask_autopilot_test].presence || {} %>
+<% active = Comms::AskAutopilotTest.active?(test) %>
+<% pending = active && ActiveModel::Type::Boolean.new.cast(test["pending"]) %>
+<% pending_details = test.to_h["pending_details"].to_h %>
+<div id="wizwiki-ask-hero-sms-telemetry" class="wizwiki-ask-hero-telemetry">
+  <% if pending %>
+    <% pending_signals = Array(pending_details["signals"]).map(&:to_h).reject { |signal| signal["label"].to_s == "dojo" } %>
+    <% signal_by_label = pending_signals.each_with_object({}) { |signal, memo| memo[signal["label"].to_s] = signal } %>
+    <% pending_cycle = pending_details["cycle"].to_h %>
+    <% pending_dojo = pending_details["dojo"].to_h %>
+    <% dojo_scoreboard = test.to_h["dojo_scoreboard"].to_h.presence || pending_details["dojo_scoreboard"].to_h %>
+    <% dojo_score_display = dojo_scoreboard["display"].to_h %>
+    <% compact_chips = [] %>
+    <% attempt_value = if pending_cycle["attempt"].present? && pending_cycle["max_attempts"].present?
+      "#{pending_cycle['attempt']}/#{pending_cycle['max_attempts']}"
+    elsif signal_by_label["attempt"].to_h["value"].present?
+      signal_by_label["attempt"].to_h["value"]
+    end %>
+    <% if pending_dojo.present? %>
+      <% scenario_count = pending_dojo["cycle"].present? && pending_dojo["total_cycles"].present? ? "#{pending_dojo['cycle']}/#{pending_dojo['total_cycles']}" : nil %>
+      <% scenario_turn = pending_dojo["turn"].present? && pending_dojo["total_turns"].present? ? "turn #{pending_dojo['turn']}/#{pending_dojo['total_turns']}" : nil %>
+      <% scenario_attempt = attempt_value.present? ? "attempt #{attempt_value}" : nil %>
+      <% scenario_parts = [
+        scenario_count,
+        scenario_turn,
+        scenario_attempt,
+        pending_dojo["title"].presence
+      ].compact_blank %>
+      <% compact_chips << { "label" => "scenario", "value" => scenario_parts.join(" // ") } if scenario_parts.present? %>
+      <% compact_chips << { "label" => "phase", "value" => pending_dojo["phase"].to_s.tr("_", " ") } if pending_dojo["phase"].present? %>
+      <% if dojo_score_display["average"].present? %>
+        <% compact_chips << { "label" => "last avg", "value" => "#{dojo_score_display["average"]}/100 // #{dojo_score_display["grade_count"].to_i} graded" } %>
+      <% end %>
+    <% elsif attempt_value.present? %>
+      <% compact_chips << { "label" => "attempt", "value" => attempt_value } %>
+    <% end %>
+    <% if attempt_value.blank? && pending_cycle.present? && pending_cycle["retry_count"].to_i.positive? %>
+      <% compact_chips << { "label" => "retry", "value" => "#{pending_cycle['retry_count'].to_i}/#{pending_cycle['retry_limit'].to_i}" } %>
+    <% end %>
+    <% ["time", "job", "model", "rag", "gate"].each do |label| %>
+      <% signal = signal_by_label[label].to_h %>
+      <% compact_chips << { "label" => label, "value" => signal["value"] } if signal["value"].present? %>
+    <% end %>
+    <% compact_chips = compact_chips.compact_blank.first(8) %>
+    <div class="wizwiki-ask-autopilot-telemetry wizwiki-ask-autopilot-telemetry--compact wizwiki-ask-autopilot-telemetry--hero">
+      <div class="wizwiki-ask-autopilot-telemetry-chips">
+        <% compact_chips.each do |chip| %>
+          <span><b><%= chip["label"] %></b><em><%= chip["value"] %></em></span>
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <p>Use the left panel to prompt. Switch the right panel between SMS Simulator and Ask Thread.</p>
+  <% end %>
+</div>

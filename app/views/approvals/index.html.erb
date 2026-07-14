@@ -1,0 +1,113 @@
+<% content_for :title, "Approve" %>
+
+<section class="border-2 border-dotted border-pink-500 bg-black p-6 shadow-2xl shadow-teal-950/30">
+  <p class="font-mono text-xs font-black uppercase tracking-[0.35em] text-pink-300">admin // approval queue</p>
+  <h1 class="mt-3 font-mono text-4xl font-black tracking-[-0.06em] text-white">Approve</h1>
+  <p class="mt-4 max-w-3xl font-mono text-sm leading-7 text-zinc-300">
+    Review staged build work before anything becomes production work. Design queue uploads live under TRAIN and can be reviewed from Opportunities.
+  </p>
+</section>
+
+<section id="users" class="mt-6 border border-dotted border-pink-400 bg-[#090909] p-5">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-teal-500">user access</p>
+      <h2 class="mt-2 font-mono text-3xl font-black tracking-[-0.06em] text-white">Team Roles</h2>
+      <p class="mt-3 max-w-3xl font-mono text-xs leading-6 text-zinc-400">
+        Roles are design, develop, or produce. Develop users and admins can use BUILD. All users can TRAIN. Only admins can APPROVE.
+      </p>
+    </div>
+    <span class="border border-dotted border-white/40 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.25em] text-pink-200"><%= pluralize(@memberships.size, "user") %></span>
+  </div>
+
+  <div class="mt-5 overflow-x-auto">
+    <table class="w-full min-w-[760px] border-collapse font-mono text-xs">
+      <thead>
+        <tr class="border-b border-dotted border-white/30 text-left uppercase tracking-[0.22em] text-teal-400">
+          <th class="px-3 py-3">User</th>
+          <th class="px-3 py-3">Email</th>
+          <th class="px-3 py-3">Role</th>
+          <th class="px-3 py-3">Admin</th>
+          <th class="px-3 py-3">Status</th>
+          <th class="px-3 py-3 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @memberships.each do |membership| %>
+          <tr class="border-b border-dotted border-white/10 text-zinc-200 hover:bg-white/5">
+            <td class="px-3 py-3 font-black text-white"><%= membership.user.display_name %></td>
+            <td class="px-3 py-3 text-zinc-400"><%= membership.user.email_address %></td>
+            <td class="px-3 py-3"><span class="border border-dotted border-pink-400 px-2 py-1 text-pink-100"><%= membership.role.upcase %></span></td>
+            <td class="px-3 py-3"><%= membership.admin? ? "YES" : "NO" %></td>
+            <td class="px-3 py-3 text-zinc-400"><%= membership.status.upcase %></td>
+            <td class="px-3 py-3 text-right">
+              <div class="flex flex-wrap justify-end gap-2">
+                <%= button_to "SEND RESET", send_password_reset_approve_user_path(membership), method: :post, class: "cursor-pointer border border-dotted border-cyan-300/70 bg-cyan-950/60 px-3 py-2 font-black text-cyan-100 hover:bg-cyan-300 hover:text-black", data: { turbo_confirm: "Send a password reset email to #{membership.user.email_address}?" } %>
+                <%= link_to "EDIT", edit_approve_user_path(membership), class: "border border-dotted border-white/50 px-3 py-2 font-black text-white hover:bg-teal-700" %>
+              </div>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="mt-6 border border-dotted border-white/50 bg-black p-5">
+  <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-teal-500">staged build requests</p>
+  <div class="mt-5 grid gap-4">
+    <% @staged_build_requests.each do |request| %>
+      <article class="border border-dotted border-white/30 bg-white/5 p-4">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p class="font-mono text-xs uppercase tracking-[0.2em] text-pink-300"><%= request.target_area %> // <%= request.user.display_name %></p>
+            <h2 class="mt-2 font-mono text-2xl font-black text-white"><%= request.title %></h2>
+            <p class="mt-3 text-sm leading-6 text-zinc-300"><%= request.prompt %></p>
+          </div>
+          <div class="flex gap-2">
+            <%= button_to "APPROVE", approve_build_request_path(request, status: "approved"), method: :patch, class: "border border-dotted border-pink-400 bg-pink-700 px-4 py-3 font-mono text-[11px] font-black text-white hover:bg-white hover:text-black" %>
+            <%= button_to "REJECT", approve_build_request_path(request, status: "rejected"), method: :patch, class: "border border-dotted border-white/50 bg-transparent px-4 py-3 font-mono text-[11px] font-black text-white hover:bg-teal-700" %>
+          </div>
+        </div>
+        <% if request.metadata.to_h.dig("autos_build", "answer").present? %>
+          <pre class="mt-4 whitespace-pre-wrap border border-dotted border-white/20 bg-black p-4 text-xs text-zinc-300"><%= request.metadata.dig("autos_build", "answer") %></pre>
+        <% end %>
+      </article>
+    <% end %>
+    <% if @staged_build_requests.blank? %>
+      <p class="border border-dotted border-white/30 bg-white/5 p-4 text-zinc-300">No staged build requests.</p>
+    <% end %>
+  </div>
+</section>
+
+<section class="mt-6 grid gap-4 lg:grid-cols-2">
+  <div class="border border-dotted border-white/40 bg-[#111] p-5">
+    <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-teal-500">recent decisions</p>
+    <div class="mt-4 grid gap-3">
+      <% @recent_build_requests.each do |request| %>
+        <article class="border border-dotted border-white/20 bg-white/5 p-3">
+          <p class="font-mono text-xs uppercase tracking-[0.2em] text-pink-300"><%= request.status %> // <%= request.target_area %></p>
+          <strong class="mt-1 block text-white"><%= request.title %></strong>
+        </article>
+      <% end %>
+      <% if @recent_build_requests.blank? %>
+        <p class="text-zinc-400">No prior decisions.</p>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="border border-dotted border-white/40 bg-[#111] p-5">
+    <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-teal-500">recent design uploads</p>
+    <div class="mt-4 grid gap-3">
+      <% @recent_design_reports.each do |report| %>
+        <%= link_to design_report_path(report), class: "block border border-dotted border-white/20 bg-white/5 p-3 hover:bg-teal-700" do %>
+          <p class="font-mono text-xs uppercase tracking-[0.2em] text-pink-300"><%= report.row_count %> rows</p>
+          <strong class="mt-1 block text-white"><%= report.display_title %></strong>
+        <% end %>
+      <% end %>
+      <% if @recent_design_reports.blank? %>
+        <p class="text-zinc-400">No design uploads.</p>
+      <% end %>
+    </div>
+  </div>
+</section>

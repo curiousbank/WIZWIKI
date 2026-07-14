@@ -1,0 +1,106 @@
+<% content_for :title, "WIZWIKI Profile" %>
+<% twilio_status = defined?(Comms::SmsProvider) ? Comms::SmsProvider.public_status(user: current_user) : { configured: false } %>
+
+<section class="grid gap-6">
+  <div class="border border-dotted border-fuchsia-300/60 bg-black/70 p-5">
+    <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-fuchsia-200">profile // comms identity</p>
+    <h1 class="mt-3 font-mono text-4xl font-black leading-none tracking-[-0.08em] text-white sm:text-6xl">WIZWIKI profile</h1>
+    <p class="mt-4 max-w-3xl font-mono text-sm leading-7 text-zinc-300">
+      This name and phone number become the default sender identity for WIZWIKI OUT COMM KITs. Aircall routing fields are non-secret IDs that help future call logs and staged comms map back to the right WIZWIKI user.
+    </p>
+  </div>
+
+  <div class="grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+    <aside class="border border-dotted border-cyan-300/40 bg-cyan-950/15 p-5">
+      <p class="font-mono text-[10px] font-black uppercase tracking-[0.25em] text-cyan-100">current sender</p>
+      <dl class="mt-4 grid gap-3 font-mono text-sm">
+        <div>
+          <dt class="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Name</dt>
+          <dd class="mt-1 font-black text-white"><%= current_user.display_name %></dd>
+        </div>
+        <div>
+          <dt class="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Phone</dt>
+          <dd class="mt-1 font-black text-white"><%= current_user.display_phone_number.presence || "not set" %></dd>
+        </div>
+        <div>
+          <dt class="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Email</dt>
+          <dd class="mt-1 break-all text-zinc-300"><%= current_user.email_address %></dd>
+        </div>
+        <div>
+          <dt class="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Aircall user</dt>
+          <dd class="mt-1 break-all text-zinc-300"><%= current_user.aircall_user_id.presence || "not linked" %></dd>
+        </div>
+        <div>
+          <dt class="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Aircall custom key</dt>
+          <dd class="mt-1 break-all text-zinc-300"><%= current_user.aircall_external_key.presence || "not set" %></dd>
+        </div>
+        <div>
+          <dt class="text-[10px] uppercase tracking-[0.2em] text-zinc-500"><%= twilio_status[:label].presence || "SMS sender" %></dt>
+          <dd class="mt-1 break-all <%= twilio_status[:configured] ? 'text-lime-200' : 'text-yellow-200' %>"><%= current_user.twilio_profile["from_number"].presence || current_user.twilio_profile["messaging_service_sid"].presence || (twilio_status[:configured] ? "server default" : "not configured") %></dd>
+        </div>
+      </dl>
+    </aside>
+
+    <%= form_with model: current_user, url: profile_path, method: :patch, class: "grid gap-4 border border-dotted border-white/25 bg-zinc-950/80 p-5" do |form| %>
+      <label class="grid gap-2">
+        <span class="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-fuchsia-200">Sender name</span>
+        <%= form.text_field :name, autocomplete: "name", placeholder: current_user.email_address.to_s.split("@").first, class: "border border-dotted border-fuchsia-300/60 bg-black px-4 py-3 font-mono text-white outline-none placeholder:text-zinc-600 focus:border-fuchsia-200" %>
+      </label>
+
+      <label class="grid gap-2">
+        <span class="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Outbound phone number</span>
+        <%= form.telephone_field :phone_number, autocomplete: "tel", placeholder: "phone for WIZWIKI OUT action steps", class: "border border-dotted border-cyan-300/60 bg-black px-4 py-3 font-mono text-white outline-none placeholder:text-zinc-600 focus:border-cyan-200" %>
+      </label>
+
+      <div class="grid gap-3 border border-dotted border-cyan-300/30 bg-cyan-950/10 p-4">
+        <div>
+          <p class="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-cyan-100">Aircall routing</p>
+          <p class="mt-2 font-mono text-xs leading-5 text-zinc-400">Use IDs or custom keys only. Keep Aircall API tokens in server env, not in a user profile.</p>
+        </div>
+        <label class="grid gap-2">
+          <span class="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Aircall user ID</span>
+          <%= form.text_field :aircall_user_id, autocomplete: "off", placeholder: "agent/user id from Aircall", class: "border border-dotted border-cyan-300/60 bg-black px-4 py-3 font-mono text-white outline-none placeholder:text-zinc-600 focus:border-cyan-200" %>
+        </label>
+        <label class="grid gap-2">
+          <span class="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Aircall number ID</span>
+          <%= form.text_field :aircall_number_id, autocomplete: "off", placeholder: "default line/number id", class: "border border-dotted border-cyan-300/60 bg-black px-4 py-3 font-mono text-white outline-none placeholder:text-zinc-600 focus:border-cyan-200" %>
+        </label>
+        <label class="grid gap-2">
+          <span class="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Aircall custom key</span>
+          <%= form.text_field :aircall_external_key, autocomplete: "off", placeholder: "stable key for matching call activity", class: "border border-dotted border-cyan-300/60 bg-black px-4 py-3 font-mono text-white outline-none placeholder:text-zinc-600 focus:border-cyan-200" %>
+        </label>
+      </div>
+
+      <div class="grid gap-3 border border-dotted border-fuchsia-300/35 bg-fuchsia-950/15 p-4">
+        <div>
+          <p class="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-fuchsia-100"><%= twilio_status[:label].presence || "SMS Provider" %></p>
+          <p class="mt-2 font-mono text-xs leading-5 text-zinc-400">SMS provider keys stay in server env. Set your assigned sender line here so your COMMS station can route SMS from the right number.</p>
+        </div>
+        <label class="grid gap-2">
+          <span class="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-fuchsia-200">SMS from number</span>
+          <%= form.telephone_field :twilio_from_number, autocomplete: "tel", placeholder: "+15555550123", class: "border border-dotted border-fuchsia-300/60 bg-black px-4 py-3 font-mono text-white outline-none placeholder:text-zinc-600 focus:border-fuchsia-200" %>
+        </label>
+        <label class="grid gap-2">
+          <span class="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-fuchsia-200">Twilio messaging service SID</span>
+          <%= form.text_field :twilio_messaging_service_sid, autocomplete: "off", placeholder: "optional service SID", class: "border border-dotted border-fuchsia-300/60 bg-black px-4 py-3 font-mono text-white outline-none placeholder:text-zinc-600 focus:border-fuchsia-200" %>
+        </label>
+        <div class="grid gap-2 font-mono text-xs text-zinc-300 sm:grid-cols-2">
+          <div class="border border-dotted border-white/20 bg-black/35 p-3">
+            <span class="block text-[10px] uppercase tracking-[0.16em] text-zinc-500">WIZWIKI server status</span>
+            <b class="<%= twilio_status[:configured] ? 'text-lime-200' : 'text-yellow-200' %>"><%= twilio_status[:configured] ? "ready to send SMS" : "missing SMS provider sender or env" %></b>
+          </div>
+          <%= link_to "OPEN TWILIO CONSOLE", "https://console.twilio.com/us1/develop/sms/try-it-out/send-an-sms", target: "_blank", rel: "noopener", class: "grid place-items-center border border-dotted border-fuchsia-300/70 bg-black px-4 py-3 font-mono text-[11px] font-black text-fuchsia-100 hover:bg-fuchsia-300 hover:text-black" %>
+        </div>
+      </div>
+
+      <div class="border border-dotted border-lime-300/35 bg-lime-950/15 p-4 font-mono text-xs leading-6 text-lime-50">
+        Future WIZWIKI OUT COMM KITs will receive this profile in the payload. Existing generated kits keep their original content unless you regenerate or restage them.
+      </div>
+
+      <div class="flex flex-wrap gap-3">
+        <%= form.submit "SAVE PROFILE", class: "cursor-pointer border border-dotted border-lime-300 bg-lime-950/40 px-5 py-3 font-mono text-[11px] font-black text-lime-100 hover:bg-lime-300 hover:text-black" %>
+        <%= link_to "BACK TO LEADS", deal_queue_path, class: "border border-dotted border-white/40 px-5 py-3 font-mono text-[11px] font-black text-white hover:bg-white hover:text-black" %>
+      </div>
+    <% end %>
+  </div>
+</section>

@@ -1,0 +1,331 @@
+<% content_for :title, "Market Report Data Map" %>
+
+<section class="design-dark-panel border-2 border-dotted p-4 sm:p-6">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-pink-300">member map // report intelligence</p>
+      <h1 class="mt-2 font-mono text-3xl font-black tracking-[-0.06em] text-white sm:text-5xl">Market Report Data Map</h1>
+      <p class="mt-3 max-w-4xl font-mono text-xs leading-6 text-zinc-300 sm:text-sm">
+        This page shows what WIZWIKI stores per HubSpot ticket, what Alice/Qwen receives for market report jobs, and where the current schema can be improved before a preparation call.
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <%= link_to "LEAD GENERATOR", deal_queue_path, class: "design-soft-button border border-dotted border-white/50 px-4 py-3 font-mono text-[10px] font-black text-white" %>
+      <%= link_to "CRM TICKETS", crm_records_path(record_type: "ticket"), class: "design-soft-button border border-dotted border-white/50 px-4 py-3 font-mono text-[10px] font-black text-white" %>
+    </div>
+  </div>
+</section>
+
+<section class="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+  <% [
+    ["tickets", @data_map[:stats][:tickets]],
+    ["labeled", @data_map[:stats][:tickets_with_labeled_properties]],
+    ["raw props", @data_map[:stats][:tickets_with_raw_properties]],
+    ["company links", @data_map[:stats][:tickets_with_company]],
+    ["media", @data_map[:stats][:tickets_with_media]],
+    ["reports", @data_map[:stats][:report_artifacts]]
+  ].each do |label, value| %>
+    <div class="border border-dotted border-white/30 bg-white/5 p-3">
+      <p class="font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-400"><%= label %></p>
+      <strong class="mt-1 block font-mono text-2xl text-white"><%= number_with_delimiter(value) %></strong>
+    </div>
+  <% end %>
+</section>
+
+<% hygiene = @data_map[:crm_hygiene] %>
+<section class="design-dark-panel mt-4 border border-dotted border-fuchsia-300/50 p-4">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-fuchsia-200">crm hygiene // recommendations only</p>
+      <h2 class="mt-1 font-mono text-xl font-black text-white">Thumper Data Map Recommendations</h2>
+      <p class="mt-2 max-w-4xl font-mono text-xs leading-5 text-zinc-300">This does not delete local data. It flags duplicate identities, unlinked records, noisy artifacts, and association gaps so WIZWIKI can clean HubSpot upstream while keeping Thumper memory source-backed.</p>
+    </div>
+    <span class="border border-dotted border-cyan-200/70 bg-cyan-950/20 px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.18em] text-cyan-100">read-only crm audit</span>
+  </div>
+
+  <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+    <% [
+      ["crm records", hygiene[:summary][:total_crm_records]],
+      ["direct edges", hygiene[:summary][:direct_association_edges]],
+      ["ticket deal links", hygiene[:summary][:tickets_with_direct_deals]],
+      ["unlinked deals", hygiene[:summary][:unassociated_records_by_type].fetch("deal", 0)],
+      ["archived vectors", hygiene[:summary][:archived_crm_chunks]]
+    ].each do |label, value| %>
+      <div class="border border-dotted border-white/20 bg-black/35 p-3">
+        <p class="font-mono text-[9px] uppercase tracking-[0.18em] text-zinc-400"><%= label %></p>
+        <strong class="mt-1 block font-mono text-2xl text-white"><%= number_with_delimiter(value) %></strong>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+    <article class="border border-dotted border-white/20 bg-black/35 p-3">
+      <p class="font-mono text-[9px] font-black uppercase tracking-[0.2em] text-pink-200">association gaps</p>
+      <% gap = hygiene[:association_gaps] %>
+      <dl class="mt-3 grid gap-2 sm:grid-cols-2">
+        <% [
+          ["active tickets", gap[:active_tickets]],
+          ["company-linked", gap[:active_tickets_with_company]],
+          ["contact-linked", gap[:active_tickets_with_contacts]],
+          ["deal-linked", gap[:active_tickets_with_deals]]
+        ].each do |label, value| %>
+          <div class="border border-dotted border-white/15 bg-white/5 p-2">
+            <dt class="font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-500"><%= label %></dt>
+            <dd class="mt-1 font-mono text-lg font-black text-white"><%= number_with_delimiter(value) %></dd>
+          </div>
+        <% end %>
+      </dl>
+      <p class="mt-3 text-xs leading-5 text-zinc-300"><%= gap[:note] %></p>
+    </article>
+
+    <article class="border border-dotted border-white/20 bg-black/35 p-3">
+      <p class="font-mono text-[9px] font-black uppercase tracking-[0.2em] text-pink-200">recommended actions</p>
+      <div class="mt-3 grid gap-2">
+        <% hygiene[:recommendations].each do |item| %>
+          <div class="border border-dotted <%= item[:status] == 'missing-link' ? 'border-cyan-300/60 bg-cyan-950/20' : item[:status] == 'noise' ? 'border-orange-300/60 bg-orange-950/20' : 'border-fuchsia-300/60 bg-fuchsia-950/20' %> p-3">
+            <p class="font-mono text-[9px] font-black uppercase tracking-[0.18em] text-zinc-400"><%= item[:status] %></p>
+            <h3 class="mt-1 text-sm font-black text-white"><%= item[:title] %></h3>
+            <p class="mt-2 text-xs leading-5 text-zinc-300"><%= item[:body] %></p>
+          </div>
+        <% end %>
+      </div>
+    </article>
+  </div>
+
+  <div class="mt-4 grid gap-4 lg:grid-cols-3">
+    <details class="border border-dotted border-white/20 bg-black/35 p-3">
+      <summary class="cursor-pointer font-mono text-[10px] font-black uppercase tracking-[0.18em] text-zinc-200">duplicate identity groups</summary>
+      <div class="mt-3 grid gap-3">
+        <% if hygiene[:duplicate_identity_groups].present? %>
+          <% hygiene[:duplicate_identity_groups].each do |group| %>
+            <div class="border border-dotted border-white/15 bg-white/5 p-3">
+              <p class="font-mono text-[9px] font-black uppercase tracking-[0.16em] text-fuchsia-100"><%= group[:title] %> // <%= group[:count] %> groups</p>
+              <% group[:examples].first(3).each do |example| %>
+                <div class="mt-2 border-t border-dotted border-white/10 pt-2">
+                  <p class="break-all font-mono text-[10px] text-white"><%= example[:value] %> // <%= example[:count] %> records</p>
+                  <p class="mt-1 text-[11px] leading-4 text-zinc-400"><%= example[:records].map { |record| "##{record[:id]} #{record[:type]} #{record[:name]}" }.join(" | ") %></p>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="text-xs text-zinc-400">No duplicate email/domain/phone groups found in the current local cache.</p>
+        <% end %>
+      </div>
+    </details>
+
+    <details class="border border-dotted border-white/20 bg-black/35 p-3">
+      <summary class="cursor-pointer font-mono text-[10px] font-black uppercase tracking-[0.18em] text-zinc-200">unused / unlinked records</summary>
+      <div class="mt-3 grid gap-3">
+        <% hygiene[:unused_record_groups].each do |group| %>
+          <div class="border border-dotted border-white/15 bg-white/5 p-3">
+            <p class="font-mono text-[9px] font-black uppercase tracking-[0.16em] text-orange-100"><%= group[:title] %> // <%= number_with_delimiter(group[:count]) %></p>
+            <p class="mt-2 text-xs leading-5 text-zinc-300"><%= group[:recommendation] %></p>
+            <% if group[:examples].present? %>
+              <ul class="mt-2 grid gap-1 text-[11px] leading-4 text-zinc-400">
+                <% group[:examples].first(5).each do |record| %>
+                  <li>#<%= record[:id] %> // <%= record[:stage].presence || record[:status] %> // <%= record[:name] %></li>
+                <% end %>
+              </ul>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </details>
+
+    <details class="border border-dotted border-white/20 bg-black/35 p-3">
+      <summary class="cursor-pointer font-mono text-[10px] font-black uppercase tracking-[0.18em] text-zinc-200">artifact and vector noise</summary>
+      <div class="mt-3 grid gap-3">
+        <div class="border border-dotted border-white/15 bg-white/5 p-3">
+          <p class="font-mono text-[9px] font-black uppercase tracking-[0.16em] text-orange-100">report artifacts</p>
+          <p class="mt-2 text-xs leading-5 text-zinc-300">Failed older than 24h: <%= number_with_delimiter(hygiene[:artifact_noise][:failed_older_24h]) %> // generating older than 30m: <%= number_with_delimiter(hygiene[:artifact_noise][:generating_older_30m]) %></p>
+        </div>
+        <div class="border border-dotted border-white/15 bg-white/5 p-3">
+          <p class="font-mono text-[9px] font-black uppercase tracking-[0.16em] text-cyan-100">vector memory</p>
+          <% vector = hygiene[:vector_memory_notes] %>
+          <p class="mt-2 text-xs leading-5 text-zinc-300">Chunks: <%= number_with_delimiter(vector[:total_chunks].to_i) %> // archived CRM chunks: <%= number_with_delimiter(vector[:archived_crm_chunks].to_i) %></p>
+          <p class="mt-2 text-xs leading-5 text-zinc-400"><%= vector[:recommendation] %></p>
+        </div>
+      </div>
+    </details>
+  </div>
+</section>
+
+<section class="design-dark-panel mt-4 border border-dotted p-4">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-pink-300">handoff path</p>
+      <h2 class="mt-1 font-mono text-xl font-black text-white">What Alice Receives</h2>
+      <p class="mt-2 max-w-4xl font-mono text-xs leading-5 text-zinc-400">Each RPT job is packaged by SUN, pulled by Alice over the worker API, embedded locally, written by the selected local model, and returned as a DOCX plus Canva Build Kit.</p>
+    </div>
+    <span class="border border-dotted border-green-300/60 bg-green-950/20 px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.18em] text-green-100">worker payload contract live</span>
+  </div>
+
+  <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+    <% @data_map[:payload_sections].each do |section| %>
+      <article class="border border-dotted border-white/20 bg-black/35 p-3">
+        <p class="font-mono text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500"><%= section[:key] %></p>
+        <h3 class="mt-1 text-base font-black text-white"><%= section[:title] %></h3>
+        <p class="mt-2 text-xs leading-5 text-zinc-300"><%= section[:description] %></p>
+        <p class="mt-3 border border-dotted border-white/20 bg-white/5 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-400">sample: <%= section[:sample] %></p>
+      </article>
+    <% end %>
+  </div>
+</section>
+
+<section class="mt-4 grid gap-4 lg:grid-cols-[1fr_0.9fr]">
+  <article class="design-dark-panel border border-dotted p-4">
+    <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-pink-300">report prep call</p>
+    <h2 class="mt-1 font-mono text-xl font-black text-white">Input Schema To Report Contract</h2>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full min-w-[760px] border-collapse text-left text-xs">
+        <thead>
+          <tr class="border-b border-dotted border-white/20 text-zinc-400">
+            <th class="px-3 py-2 font-mono text-[9px] uppercase tracking-[0.18em]">Client input</th>
+            <th class="px-3 py-2 font-mono text-[9px] uppercase tracking-[0.18em]">Worker path</th>
+            <th class="px-3 py-2 font-mono text-[9px] uppercase tracking-[0.18em]">Source logic</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-dotted divide-white/20">
+          <% @data_map[:report_input_sources].each do |row| %>
+            <tr>
+              <td class="px-3 py-2 font-black text-white"><%= row[:input] %></td>
+              <td class="px-3 py-2 font-mono text-[10px] text-pink-200"><%= row[:payload_key] %></td>
+              <td class="px-3 py-2 text-zinc-300"><%= row[:source] %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <aside class="design-dark-panel border border-dotted p-4">
+    <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-pink-300">sample ticket</p>
+    <% if @data_map[:sample_ticket].present? %>
+      <% sample = @data_map[:sample_ticket] %>
+      <h2 class="mt-1 text-xl font-black text-white"><%= sample[:name] %></h2>
+      <p class="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">record #<%= sample[:id] %> // hubspot #<%= sample[:hubspot_id] || "empty" %></p>
+      <dl class="mt-4 grid gap-2">
+        <% [
+          ["stage", sample[:stage]],
+          ["status", sample[:status]],
+          ["raw properties", sample[:raw_property_count]],
+          ["labeled properties", sample[:labeled_property_count]],
+          ["associations", "company #{sample[:associations][:companies]} / contacts #{sample[:associations][:contacts]} / deals #{sample[:associations][:deals]}"],
+          ["media files", sample[:media_count]],
+          ["missing core", sample[:missing_core_fields].presence&.join(", ") || "none"]
+        ].each do |label, value| %>
+          <div class="border border-dotted border-white/15 bg-white/5 p-3">
+            <dt class="font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-500"><%= label %></dt>
+            <dd class="mt-1 break-words text-xs text-white"><%= value.presence || "empty" %></dd>
+          </div>
+        <% end %>
+      </dl>
+      <% if sample[:latest_report].present? %>
+        <div class="mt-4 border border-dotted border-green-300/50 bg-green-950/20 p-3">
+          <p class="font-mono text-[9px] uppercase tracking-[0.18em] text-green-100">latest report</p>
+          <p class="mt-1 text-sm font-black text-white">#<%= sample[:latest_report][:id] %> // <%= sample[:latest_report][:status] %> // <%= sample[:latest_report][:audience] %></p>
+          <p class="mt-1 font-mono text-[10px] text-zinc-300"><%= sample[:latest_report][:model].presence || "model pending" %> + <%= sample[:latest_report][:embedder].presence || "embedder pending" %></p>
+        </div>
+      <% end %>
+    <% else %>
+      <p class="mt-2 text-zinc-300">No synced HubSpot tickets are loaded yet.</p>
+    <% end %>
+  </aside>
+</section>
+
+<section class="design-dark-panel mt-4 border border-dotted p-4">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-pink-300">coverage</p>
+      <h2 class="mt-1 font-mono text-xl font-black text-white">Ticket Field Coverage</h2>
+      <p class="mt-2 max-w-3xl font-mono text-xs leading-5 text-zinc-400">Coverage is calculated from the most recent <%= number_with_delimiter(@data_map[:sample_limit]) %> synced HubSpot tickets. It shows whether each boss-facing report field is actually present in the local cache.</p>
+    </div>
+    <span class="border border-dotted border-white/30 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-300"><%= number_with_delimiter(@data_map[:raw_property_names].size) %> raw property names seen</span>
+  </div>
+
+  <div class="mt-4 overflow-x-auto">
+    <table class="w-full min-w-[760px] border-collapse text-left text-xs">
+      <thead>
+        <tr class="border-b border-dotted border-white/20 text-zinc-400">
+          <th class="px-3 py-2 font-mono text-[9px] uppercase tracking-[0.18em]">Label</th>
+          <th class="px-3 py-2 font-mono text-[9px] uppercase tracking-[0.18em]">HubSpot property</th>
+          <th class="px-3 py-2 font-mono text-[9px] uppercase tracking-[0.18em]">Present</th>
+          <th class="px-3 py-2 font-mono text-[9px] uppercase tracking-[0.18em]">Coverage</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-dotted divide-white/20">
+        <% @data_map[:ticket_field_coverage].each do |field| %>
+          <tr>
+            <td class="px-3 py-2 font-black text-white"><%= field[:label] %></td>
+            <td class="px-3 py-2 font-mono text-[10px] text-zinc-400"><%= field[:source_property].presence || "not mapped" %></td>
+            <td class="px-3 py-2 text-zinc-300"><%= number_with_delimiter(field[:present_count]) %> / <%= number_with_delimiter(field[:sample_count]) %></td>
+            <td class="px-3 py-2">
+              <span class="inline-flex border border-dotted <%= field[:coverage_percent].to_i >= 70 ? 'border-green-300/60 text-green-100' : field[:coverage_percent].to_i.positive? ? 'border-orange-300/70 text-orange-100' : 'border-teal-300/70 text-teal-100' %> px-2 py-1 font-mono text-[10px]"><%= field[:coverage_percent] %>%</span>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <details class="mt-4 border border-dotted border-white/20 bg-black/35 p-3">
+    <summary class="cursor-pointer font-mono text-[10px] font-black uppercase tracking-[0.2em] text-zinc-200">raw HubSpot property names cached locally</summary>
+    <p class="mt-3 font-mono text-[10px] leading-5 text-zinc-400"><%= @data_map[:raw_property_names].join(", ") %></p>
+  </details>
+</section>
+
+<section class="mt-4 grid gap-4 lg:grid-cols-2">
+  <article class="design-dark-panel border border-dotted p-4">
+    <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-pink-300">associated data</p>
+    <h2 class="mt-1 font-mono text-xl font-black text-white">HubSpot Graph Objects</h2>
+    <div class="mt-4 grid gap-3">
+      <% @data_map[:associated_objects].each do |object| %>
+        <div class="border border-dotted border-white/20 bg-black/35 p-3">
+          <p class="font-mono text-[9px] uppercase tracking-[0.18em] text-zinc-500"><%= object[:object_type] %> -> <%= object[:local_record_type] %> // <%= object[:association_type] %></p>
+          <p class="mt-2 text-xs leading-5 text-zinc-300"><%= object[:properties].join(", ") %></p>
+        </div>
+      <% end %>
+    </div>
+  </article>
+
+  <article class="design-dark-panel border border-dotted p-4">
+    <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-pink-300">optimization</p>
+    <h2 class="mt-1 font-mono text-xl font-black text-white">Schema Utilization Notes</h2>
+    <div class="mt-4 grid gap-3">
+      <% @data_map[:optimization_notes].each do |note| %>
+        <div class="border border-dotted <%= note[:status] == 'strong' ? 'border-green-300/60 bg-green-950/20' : note[:status] == 'next' ? 'border-pink-300/60 bg-pink-950/20' : 'border-orange-300/60 bg-orange-950/20' %> p-3">
+          <p class="font-mono text-[9px] font-black uppercase tracking-[0.18em] text-zinc-400"><%= note[:status] %></p>
+          <h3 class="mt-1 text-sm font-black text-white"><%= note[:title] %></h3>
+          <p class="mt-2 text-xs leading-5 text-zinc-300"><%= note[:body] %></p>
+        </div>
+      <% end %>
+    </div>
+  </article>
+</section>
+
+<section class="design-dark-panel mt-4 border border-dotted p-4">
+  <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-pink-300">contract</p>
+  <h2 class="mt-1 font-mono text-xl font-black text-white">Report Contract</h2>
+  <div class="mt-4 grid gap-4 lg:grid-cols-2">
+    <div class="border border-dotted border-white/20 bg-black/35 p-3">
+      <p class="font-mono text-[9px] uppercase tracking-[0.18em] text-zinc-500">client sections</p>
+      <ol class="mt-2 grid gap-1 text-xs text-zinc-300">
+        <% @data_map[:report_contract][:client_sections].each do |section| %>
+          <li><%= section %></li>
+        <% end %>
+      </ol>
+    </div>
+    <div class="border border-dotted border-white/20 bg-black/35 p-3">
+      <p class="font-mono text-[9px] uppercase tracking-[0.18em] text-zinc-500">AM sections</p>
+      <ol class="mt-2 grid gap-1 text-xs text-zinc-300">
+        <% @data_map[:report_contract][:am_sections].each do |section| %>
+          <li><%= section %></li>
+        <% end %>
+      </ol>
+    </div>
+  </div>
+  <p class="mt-4 border border-dotted border-white/20 bg-black/35 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-400">
+    contract <%= @data_map[:report_contract][:version] %> // client target <%= @data_map[:report_contract][:client_quality_gate][:minimum_words] %> words / hard <%= @data_map[:report_contract][:client_quality_gate][:hard_minimum_words] %> // AM target <%= @data_map[:report_contract][:am_quality_gate][:minimum_words] %> words / hard <%= @data_map[:report_contract][:am_quality_gate][:hard_minimum_words] %>
+  </p>
+</section>

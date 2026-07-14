@@ -1,0 +1,36 @@
+<section class="border-2 border-dotted border-teal-600 bg-black p-5">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="font-mono text-xs uppercase tracking-[0.35em] text-teal-500">opportunities // records</p>
+      <h1 class="mt-2 font-mono text-4xl font-black tracking-[-0.06em]"><%= @record_type.present? ? CrmRecord.record_type_label(@record_type) : "All Records" %></h1>
+    </div>
+    <%= link_to "New record", new_crm_record_path(record_type: @record_type || "contact"), class: "border border-dotted border-white/50 bg-teal-700 px-5 py-3 font-mono text-[11px] font-black text-white hover:bg-white hover:text-black" %>
+  </div>
+
+  <div class="mt-6 flex flex-wrap gap-2">
+    <%= link_to "All", crm_records_path, class: "border border-dotted border-white/40 px-4 py-2 font-mono text-[11px] #{'bg-white/15' if @record_type.blank?}" %>
+    <% CrmRecord::RECORD_TYPES.each do |type| %>
+      <%= link_to "#{type.pluralize} (#{@record_counts[type]})", crm_records_path(record_type: type), class: "border border-dotted border-white/40 px-4 py-2 font-mono text-[11px] #{'bg-teal-700 text-white' if @record_type == type}" %>
+    <% end %>
+  </div>
+
+  <%= form_with url: crm_records_path, method: :get, class: "mt-6 flex flex-wrap gap-3" do |form| %>
+    <%= hidden_field_tag :record_type, @record_type if @record_type.present? %>
+    <%= form.search_field :q, value: params[:q], placeholder: "Search names, emails, phone, domains", class: "min-w-72 flex-1 border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+    <%= form.submit "Search", class: "border border-dotted border-white/50 bg-teal-700 px-5 py-3 font-mono text-[11px] font-black text-white hover:bg-white hover:text-black" %>
+  <% end %>
+
+  <div class="mt-6 overflow-hidden border border-dotted border-white/40">
+    <% @records.each do |record| %>
+      <%= link_to crm_record_path(record), class: "grid gap-2 border-b border-dotted border-white/20 bg-white/5 p-4 hover:bg-teal-700 md:grid-cols-[110px_1fr_220px_130px]" do %>
+        <span class="font-mono text-xs uppercase tracking-[0.2em] text-teal-400"><%= record.record_type %></span>
+        <strong><%= record.name %></strong>
+        <span class="text-zinc-300"><%= record.email.presence || record.domain.presence || record.phone.presence || record.stage.presence || "no identity field" %></span>
+        <span class="text-zinc-400"><%= record.status %></span>
+      <% end %>
+    <% end %>
+    <% if @records.blank? %>
+      <p class="p-6 text-zinc-300">No records match this view.</p>
+    <% end %>
+  </div>
+</section>

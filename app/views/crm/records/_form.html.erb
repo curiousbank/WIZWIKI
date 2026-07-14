@@ -1,0 +1,71 @@
+<%= form_with model: @record, url: (@record.persisted? ? crm_record_path(@record) : crm_records_path), class: "grid gap-5 border-2 border-dotted border-teal-600 bg-black p-5" do |form| %>
+  <div class="grid gap-4 md:grid-cols-2">
+    <div>
+      <%= form.label :record_type, class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+      <%= form.select :record_type, CrmRecord::RECORD_TYPES.map { |type| [type.titleize, type] }, {}, class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+    </div>
+    <div>
+      <%= form.label :name, class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+      <%= form.text_field :name, required: true, class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+    </div>
+    <div>
+      <%= form.label :email, class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+      <%= form.email_field :email, class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+    </div>
+    <div>
+      <%= form.label :phone, class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+      <%= form.telephone_field :phone, class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+    </div>
+    <div>
+      <%= form.label :domain, "Company domain", class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+      <%= form.text_field :domain, class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+    </div>
+    <div>
+      <%= form.label :stage, class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+      <%= form.text_field :stage, placeholder: "lead, quoted, won, waiting, open", class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+    </div>
+    <div>
+      <%= form.label :amount, class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+      <%= form.number_field :amount, step: "0.01", class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+    </div>
+    <div>
+      <%= form.label :close_date, class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+      <%= form.date_field :close_date, class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+    </div>
+  </div>
+
+  <% if @property_definitions.present? %>
+    <div class="border border-dotted border-white/40 bg-white/5 p-5">
+      <h2 class="font-mono font-black text-teal-400">Custom properties</h2>
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <% @property_definitions.each do |definition| %>
+          <div>
+            <%= label_tag "crm_record_properties_#{definition.key}", definition.label, class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+            <%= text_field_tag "crm_record[properties][#{definition.key}]", @record.property_value(definition.key), class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <p class="border border-dotted border-white/30 p-4 text-zinc-300">
+      No custom properties for this record type yet.
+      <%= link_to "Create one", new_crm_property_definition_path(record_type: @record.record_type), class: "text-teal-400 underline" %>.
+    </p>
+  <% end %>
+
+  <div class="grid gap-4 md:grid-cols-2">
+    <div>
+      <%= form.label :source, class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+      <%= form.text_field :source, placeholder: "manual, hubspot, shopify, call, import", class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+    </div>
+    <div>
+      <%= form.label :source_uid, "Source ID", class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+      <%= form.text_field :source_uid, class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-3 text-white" %>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap gap-3">
+    <%= form.submit "Save record", class: "border border-dotted border-white/50 bg-teal-700 px-6 py-3 font-mono text-[11px] font-black text-white hover:bg-white hover:text-black" %>
+    <%= link_to "Cancel", crm_records_path(record_type: @record.record_type), class: "border border-dotted border-white/40 px-6 py-3 font-mono text-[11px] font-bold text-white hover:bg-teal-700" %>
+  </div>
+<% end %>

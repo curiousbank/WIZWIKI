@@ -1,0 +1,228 @@
+<% test = local_assigns[:ask_autopilot_test].presence || {} %>
+<% active = Comms::AskAutopilotTest.active?(test) %>
+<% pending = active && test["pending"] %>
+<% pending_started_at = test["pending_started_at"].presence || test["updated_at"].presence %>
+<% pending_label = test["pending_label"].presence || "Thumper thinking" %>
+<% pending_details = test["pending_details"].to_h %>
+<% dojo_scoreboard = test["dojo_scoreboard"].to_h.presence || pending_details["dojo_scoreboard"].to_h %>
+<% dojo_score_display = dojo_scoreboard["display"].to_h %>
+<% dojo_score_current = dojo_scoreboard["current"].to_h %>
+<% autopilot_alert = test["autopilot_alert"].to_h %>
+<% selected_sms_writer_model = WizwikiSettings.normalize_sms_writer_model(
+  test.to_h["sms_writer_model"].presence ||
+    @ask_sms_writer_model.presence ||
+    WizwikiSettings.default_sms_writer_model
+) %>
+
+<section id="ask-autopilot-test" class="wizwiki-ask-autopilot <%= "is-active" if active %>" data-controller="ask-autopilot" data-ask-autopilot-pending="<%= pending ? "true" : "false" %>" data-ask-autopilot-pending-started-at="<%= pending_started_at %>" data-ask-autopilot-version="<%= test["version"] %>" data-ask-autopilot-refresh-url="<%= ask_autopilot_test_path(format: :turbo_stream) %>">
+  <div class="wizwiki-answer-meta">
+    <span>sms autopilot test</span>
+    <span><%= active ? test["engine_label"].presence || "real engine // no twilio" : "sandbox idle" %></span>
+  </div>
+  <% if active && test["backend_label"].present? %>
+    <div class="wizwiki-answer-meta">
+      <span>backend</span>
+      <span><%= [test["backend_label"], (test["pending"] ? "drafting" : nil)].compact.join(" // ") %></span>
+    </div>
+  <% end %>
+
+  <% if active %>
+    <div class="wizwiki-ask-autopilot-actions wizwiki-ask-autopilot-actions--top">
+      <%= form_with url: start_ask_autopilot_test_path, method: :post, class: "wizwiki-ask-autopilot-action-form", data: { turbo: false } do %>
+        <label class="wizwiki-ask-llm-select-label wizwiki-ask-llm-select-label--compact">
+          <span>LLM</span>
+          <%= select_tag :sms_writer_model, options_for_select(ask_sms_writer_model_options, selected_sms_writer_model), class: "wizwiki-ask-llm-select", aria: { label: "Reset simulator LLM" } %>
+        </label>
+        <%= submit_tag "RESET TEST", class: "wizwiki-ask-autopilot-button" %>
+      <% end %>
+      <%= button_to "CLEAR TEST", clear_ask_autopilot_test_path, method: :delete, class: "wizwiki-ask-autopilot-button wizwiki-ask-autopilot-button--muted" %>
+    </div>
+
+    <div class="wizwiki-ask-thread-tools">
+      <button type="button" class="wizwiki-copy-button" data-wizwiki-copy-thread="#ask-autopilot-test [data-ask-autopilot-thread]" data-wizwiki-copy-order="asc">COPY THREAD</button>
+    </div>
+    <% if dojo_score_display.present? %>
+      <div class="wizwiki-ask-dojo-scoreboard" aria-label="Thumper dojo score summary">
+        <div class="wizwiki-ask-dojo-scoreboard-main">
+          <span><%= pending ? "last avg" : "dojo avg" %></span>
+          <strong><%= dojo_score_display["average"] %></strong>
+          <em>/100</em>
+        </div>
+        <div class="wizwiki-ask-dojo-scoreboard-meta">
+          <% if dojo_score_current["grade_count"].to_i.positive? %>
+            <span><b>current</b><%= dojo_score_current["average"] %>/100 // <%= dojo_score_current["grade_count"] %> graded</span>
+          <% end %>
+          <span><b>last run</b><%= dojo_score_display["grade_count"].to_i %> graded // <%= dojo_score_display["pass_count"].to_i %> pass // <%= dojo_score_display["review_count"].to_i %> review</span>
+          <% if dojo_score_display["latest_title"].present? %>
+            <% latest_score_text = dojo_score_display["latest_score"].present? ? " // #{dojo_score_display['latest_score']}/100" : "" %>
+            <span><b>latest</b><%= dojo_score_display["latest_title"] %><%= latest_score_text %></span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+    <div class="wizwiki-ask-autopilot-thread" data-ask-autopilot-thread data-ask-autopilot-thread-order="desc">
+      <% visible_messages = Array(test["messages"]).sort_by do |message|
+        timestamp = message.to_h["created_at"].presence || message.to_h["at"].presence || message.to_h["timestamp"].presence
+        Time.zone.parse(timestamp.to_s) rescue Time.zone.at(0)
+      end.reverse %>
+      <% visible_messages = visible_messages.first(pending ? 24 : 100) %>
+      <% visible_messages.each do |message| %>
+        <% role = message["role"].to_s %>
+        <% direction = message["direction"].to_s == "inbound" ? "inbound" : "outbound" %>
+        <% customer_facing_dojo_role = %w[dojo_customer dojo_answer dojo_conversation_customer dojo_conversation_answer].include?(role) %>
+        <% bubble_direction = customer_facing_dojo_role ? direction : (role.start_with?("dojo_") ? "dojo" : direction) %>
+        <% sent_at = Time.zone.parse(message["created_at"].to_s) rescue nil %>
+        <% copy_time = sent_at.present? ? sent_at.in_time_zone("Eastern Time (US & Canada)").strftime("%-l:%M:%S %p ET") : nil %>
+        <% display_body = message["original_body"].presence || message["body"].to_s %>
+        <% speaker = case role
+          when "dojo_guidance" then "dojo guide"
+          when "dojo_customer" then "customer"
+          when "dojo_answer" then "thumper"
+          when "dojo_grade" then "dojo grade"
+          when "dojo_conversation_customer" then "customer"
+          when "dojo_conversation_answer" then "thumper"
+          when "dojo_conversation_grade" then "dojo convo grade"
+          when "dojo_summary" then "embedding summary"
+          when "dojo_scroll_summary" then "dojo scroll"
+          else
+            direction == "inbound" ? "customer" : "thumper"
+          end %>
+        <article class="wizwiki-ask-sms-bubble wizwiki-ask-sms-bubble--<%= bubble_direction %>" data-wizwiki-copy-line="<%= [speaker, copy_time, display_body].compact.join(" // ") %>" data-wizwiki-copy-time="<%= sent_at&.iso8601 %>">
+          <div>
+            <span><%= speaker %></span>
+            <% if sent_at.present? %>
+              <time datetime="<%= sent_at.iso8601 %>"><%= sent_at.in_time_zone("Eastern Time (US & Canada)").strftime("%-l:%M:%S %p ET") %></time>
+            <% end %>
+            <button type="button" class="wizwiki-copy-button wizwiki-copy-button--mini" data-wizwiki-copy-text="<%= display_body %>">COPY</button>
+          </div>
+          <p><%= display_body %></p>
+          <% scroll_links = Array(message["dojo_scroll_links"]).filter_map { |link| link.to_h.with_indifferent_access.presence }.select { |link| link[:url].present? } %>
+          <% if scroll_links.blank? && role == "dojo_scroll_summary" %>
+            <% scroll_links = message["body"].to_s.scan(%r{https?://[^\s<]+}).first(2).each_with_index.map do |url, index|
+              clean_url = url.sub(/[)\].,;:]+$/, "")
+              {
+                kind: (index.zero? ? "full_day" : "session"),
+                label: (index.zero? ? "Full Day scroll" : "Session scroll"),
+                title: (index.zero? ? "Full Day Thumper DOJO Scroll" : "Thumper DOJO Session Scroll"),
+                url: clean_url
+              }.with_indifferent_access
+            end %>
+          <% end %>
+          <% if scroll_links.any? %>
+            <div class="wizwiki-ask-dojo-scroll-links">
+              <% scroll_links.each do |link| %>
+                <% scroll_kind = link[:kind].to_s == "session" ? "session" : "full-day" %>
+                <%= link_to link[:url], target: "_blank", rel: "noopener", class: "wizwiki-ask-dojo-scroll-link wizwiki-ask-dojo-scroll-link--#{scroll_kind}" do %>
+                  <span><%= link[:label].presence || (scroll_kind == "session" ? "Session scroll" : "Full Day scroll") %></span>
+                  <strong><%= link[:title].presence || link[:url] %></strong>
+                <% end %>
+              <% end %>
+            </div>
+          <% end %>
+          <% grade = message["dojo_grade"].to_h %>
+          <% if grade.present? %>
+            <dl class="wizwiki-ask-dojo-grade">
+              <div>
+                <dt>score</dt>
+                <dd><%= grade["score"] || grade[:score] %>/100</dd>
+              </div>
+              <div>
+                <dt>verdict</dt>
+                <dd><%= grade["verdict"] || grade[:verdict] %></dd>
+              </div>
+              <div>
+                <dt>quality</dt>
+                <dd><%= grade["quality_gate"] || grade[:quality_gate] || "checked" %></dd>
+              </div>
+              <div>
+                <dt>judge</dt>
+                <dd><%= grade["judge_provider"] || grade[:judge_provider] || "rules" %></dd>
+              </div>
+            </dl>
+          <% end %>
+          <% embedding = message["embedding_summary"].to_h %>
+          <% if embedding.present? %>
+            <div class="wizwiki-ask-dojo-summary">
+              <span><%= (embedding["threads_scanned"] || embedding[:threads_scanned]).to_i %> threads scanned</span>
+              <span><%= (embedding["lessons_created"] || embedding[:lessons_created]).to_i + (embedding["quality_documents_created"] || embedding[:quality_documents_created]).to_i %> created</span>
+              <span><%= (embedding["lessons_updated"] || embedding[:lessons_updated]).to_i + (embedding["quality_documents_updated"] || embedding[:quality_documents_updated]).to_i %> updated</span>
+              <span><%= (embedding["lessons_embedded"] || embedding[:lessons_embedded]).to_i + (embedding["quality_documents_embedded"] || embedding[:quality_documents_embedded]).to_i %> embedded</span>
+            </div>
+          <% end %>
+        </article>
+      <% end %>
+    </div>
+
+    <% if autopilot_alert.present? %>
+      <div class="wizwiki-ask-autopilot-alert wizwiki-ask-autopilot-alert--<%= autopilot_alert["severity"].presence || "danger" %>" role="alert">
+        <div class="wizwiki-ask-autopilot-alert-head">
+          <strong><%= autopilot_alert["title"].presence || "Autopilot needs attention" %></strong>
+          <span>thread blocker</span>
+        </div>
+        <% if autopilot_alert["summary"].present? %>
+          <p><%= autopilot_alert["summary"] %></p>
+        <% end %>
+        <% alert_chips = Array(autopilot_alert["chips"]).map(&:to_h) %>
+        <% if alert_chips.present? %>
+          <div class="wizwiki-ask-autopilot-telemetry-chips">
+            <% alert_chips.each do |chip| %>
+              <span><b><%= chip["label"] %></b><em><%= chip["value"] %></em></span>
+            <% end %>
+          </div>
+        <% end %>
+        <% alert_details = Array(autopilot_alert["details"]).compact_blank %>
+        <% if alert_details.present? %>
+          <ul>
+            <% alert_details.each do |detail| %>
+              <% detail_hash = detail.respond_to?(:to_h) ? detail.to_h : {} %>
+              <% if detail_hash.present? %>
+                <li><b><%= detail_hash["label"] %></b><span><%= detail_hash["text"] %></span></li>
+              <% else %>
+                <li><span><%= detail %></span></li>
+              <% end %>
+            <% end %>
+          </ul>
+        <% end %>
+        <% alert_rag = autopilot_alert["rag_trace"].to_h %>
+        <% if alert_rag.present? %>
+          <div class="autos-ask-autopilot-rag-trace">
+            <strong>RAG trace</strong>
+            <div>
+              <% ["route", "retrieval", "fine_training", "current_next_text_skipped", "guidance"].each do |key| %>
+                <% if alert_rag[key].present? %>
+                  <span><b><%= key.to_s.tr("_", " ") %></b><%= alert_rag[key] %></span>
+                <% end %>
+              <% end %>
+            </div>
+            <% if alert_rag["query"].present? %>
+              <p><%= alert_rag["query"] %></p>
+            <% end %>
+            <% alert_rag_items = Array(alert_rag["documents"]).map(&:to_h) + Array(alert_rag["chunks"]).map(&:to_h) %>
+            <% if alert_rag_items.present? %>
+              <ul>
+                <% alert_rag_items.each do |item| %>
+                  <li>
+                    <b><%= item["label"].presence || "training item" %></b>
+                    <span><%= item["excerpt"].presence || (item["score"].present? ? "score #{item["score"]}" : nil) %></span>
+                  </li>
+                <% end %>
+              </ul>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+  <% else %>
+    <div class="wizwiki-ask-autopilot-idle">
+      <p>Sandbox // no SMS sent.</p>
+      <%= form_with url: start_ask_autopilot_test_path, method: :post, class: "wizwiki-ask-autopilot-action-form wizwiki-ask-autopilot-action-form--start", data: { turbo: false } do %>
+        <label class="wizwiki-ask-llm-select-label wizwiki-ask-llm-select-label--compact">
+          <span>LLM</span>
+          <%= select_tag :sms_writer_model, options_for_select(ask_sms_writer_model_options, selected_sms_writer_model), class: "wizwiki-ask-llm-select", aria: { label: "SMS autopilot simulator LLM" } %>
+        </label>
+        <%= submit_tag "START SMS AUTOPILOT TEST", class: "wizwiki-ask-autopilot-button" %>
+      <% end %>
+    </div>
+  <% end %>
+</section>

@@ -1,0 +1,22 @@
+<% content_for :title, "Fine Training Editor" %>
+
+<section class="border-2 border-dotted border-fuchsia-300/50 p-4 sm:p-6">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="font-mono text-[10px] font-black uppercase tracking-[0.36em] text-fuchsia-300">Thumper copywriter voice // fine training</p>
+      <h1 class="mt-3 font-mono text-3xl font-black uppercase tracking-[-0.04em] text-white sm:text-5xl">Fine Training Editor</h1>
+      <p class="mt-3 max-w-4xl font-mono text-sm leading-7 text-zinc-300">
+        Edit the source text Thumper retrieves for copy tone, sales language, report phrasing, and comms style. Save changes first; queue embeddings when the wording is ready.
+      </p>
+    </div>
+    <%= link_to "BACK TO TRAIN", train_path(anchor: "fine-training"), class: "border border-dotted border-white/50 px-4 py-3 font-mono text-[11px] font-black uppercase tracking-[0.16em] text-white hover:bg-white hover:text-black" %>
+  </div>
+</section>
+
+<section class="mt-5">
+  <%= render "training_documents/voice_editor",
+    documents: @voice_training_documents,
+    context: "fine-training-page",
+    fine_training_embedding_status: @fine_training_embedding_status,
+    standalone: true %>
+</section>

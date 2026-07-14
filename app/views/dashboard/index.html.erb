@@ -1,0 +1,72 @@
+<% content_for :title, "Server Base" %>
+
+<section class="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+  <div class="border-2 border-dotted border-teal-600 bg-black p-6 shadow-2xl shadow-teal-950/50">
+    <p class="font-mono text-xs font-black tracking-[0.45em] text-teal-500">Thumper // employee server base</p>
+    <h1 class="mt-4 font-mono text-5xl font-black tracking-[-0.08em] text-white">WIZWIKI</h1>
+    <p class="mt-4 max-w-3xl font-mono text-sm leading-7 text-zinc-300">
+      This is WIZWIKI's working side. Employees capture opportunities, stage build requests, ask company questions, and train Thumper with useful text.
+    </p>
+    <div class="mt-7 flex flex-wrap gap-2">
+      <%= link_to "ADD CONTACT", new_crm_record_path(record_type: "contact"), class: "border border-dotted border-white/50 bg-teal-700 px-5 py-3 font-mono text-[11px] font-black text-white hover:bg-white hover:text-black" %>
+      <%= link_to "ADD COMPANY", new_crm_record_path(record_type: "company"), class: "border border-dotted border-white/50 bg-teal-700 px-5 py-3 font-mono text-[11px] font-black text-white hover:bg-white hover:text-black" %>
+      <%= link_to "VIEW OPPORTUNITIES", crm_records_path, class: "border border-dotted border-white/50 px-5 py-3 font-mono text-[11px] font-black text-white hover:bg-teal-700" %>
+    </div>
+  </div>
+
+  <div class="border border-dotted border-white/50 bg-[#111] p-5">
+    <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-teal-500">record counters</p>
+    <div class="mt-4 grid grid-cols-2 gap-3">
+      <% @record_counts.each do |type, count| %>
+        <%= link_to crm_records_path(record_type: type), class: "border border-dotted border-white/40 bg-white/5 p-4 hover:bg-teal-700" do %>
+          <span class="block font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-400"><%= type.pluralize %></span>
+          <strong class="mt-2 block font-mono text-3xl text-white"><%= count %></strong>
+        <% end %>
+      <% end %>
+    </div>
+    <%= link_to crm_duplicate_candidates_path, class: "mt-4 block border border-dotted border-teal-500 bg-teal-950/40 p-4 text-teal-100 hover:bg-teal-700" do %>
+      <span class="block font-mono text-[10px] uppercase tracking-[0.25em]">duplicate reviews</span>
+      <strong class="mt-2 block font-mono text-3xl"><%= @open_duplicates %></strong>
+    <% end %>
+  </div>
+</section>
+
+<% if current_user.primary_membership&.admin? && (@pending_training_document_count.to_i.positive? || @pending_training_vault_count.to_i.positive?) %>
+  <section class="mt-6 border-2 border-dotted border-amber-300 bg-amber-950/20 p-5 shadow-xl shadow-amber-950/30">
+    <div class="grid gap-4 md:grid-cols-[auto_1fr_auto] md:items-center">
+      <div class="font-mono text-5xl leading-none">🧠</div>
+      <div>
+        <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-amber-200">Admin notice // Thumper knowledge intake</p>
+        <h2 class="mt-2 font-mono text-2xl font-black uppercase tracking-[-0.04em] text-white">Training material is waiting.</h2>
+        <p class="mt-2 font-mono text-xs leading-6 text-amber-50/85">
+          <%= number_with_delimiter(@pending_training_document_count.to_i) %> fine training document<%= "s" unless @pending_training_document_count.to_i == 1 %>
+          stored for manual vector refresh //
+          <%= number_with_delimiter(@pending_training_vault_count.to_i) %> trusted vault item<%= "s" unless @pending_training_vault_count.to_i == 1 %>
+          waiting for review.
+        </p>
+      </div>
+      <%= link_to "REVIEW TRAINING", train_path(anchor: "fine-training"), class: "border border-dotted border-white/60 bg-amber-600 px-5 py-3 text-center font-mono text-[11px] font-black uppercase tracking-[0.16em] text-white hover:bg-white hover:text-black" %>
+    </div>
+  </section>
+<% end %>
+
+<section class="mt-6 border border-dotted border-white/50 bg-black p-5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <p class="font-mono text-[10px] font-black uppercase tracking-[0.35em] text-teal-500">latest input</p>
+      <h2 class="mt-2 font-mono text-2xl font-black text-white">Recent records</h2>
+    </div>
+  </div>
+  <div class="mt-5 grid gap-3">
+    <% @recent_records.each do |record| %>
+      <%= link_to crm_record_path(record), class: "grid gap-2 border border-dotted border-white/30 bg-white/5 p-4 hover:bg-teal-700 md:grid-cols-[120px_1fr_180px]" do %>
+        <span class="font-mono text-xs uppercase tracking-[0.2em] text-teal-400"><%= record.record_type %></span>
+        <strong class="text-white"><%= record.name %></strong>
+        <span class="text-zinc-400"><%= record.owner&.display_name || "unassigned" %></span>
+      <% end %>
+    <% end %>
+    <% if @recent_records.blank? %>
+      <p class="border border-dotted border-white/30 bg-white/5 p-5 text-zinc-300">No records yet. Add the first contact, company, deal, or ticket.</p>
+    <% end %>
+  </div>
+</section>

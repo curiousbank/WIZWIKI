@@ -1,0 +1,16 @@
+<% content_for :title, "Reset Password" %>
+
+<section class="mx-auto max-w-3xl border-2 border-dotted border-teal-600 bg-black p-6 shadow-2xl shadow-teal-950/50 sm:p-8">
+  <p class="font-mono text-xs font-bold tracking-[0.45em] text-teal-500">account recovery // CAMPAIGN CRM</p>
+  <h1 class="mt-3 font-mono text-4xl font-black tracking-[-0.06em] text-white">Reset your password.</h1>
+  <p class="mt-4 font-mono text-sm leading-7 text-zinc-300">Enter your employee email and Campaign CRM will send reset instructions.</p>
+
+  <%= form_with url: passwords_path, class: "mt-8 grid gap-5" do |form| %>
+    <div>
+      <%= form.label :email_address, "Email", class: "block font-mono text-xs font-bold uppercase tracking-[0.2em] text-teal-400" %>
+      <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", placeholder: "name@company.com", value: params[:email_address], class: "mt-2 w-full border border-dotted border-white/40 bg-[#090909] px-4 py-4 text-white" %>
+    </div>
+
+    <%= form.submit "Email reset instructions", class: "w-full cursor-pointer border border-dotted border-white/50 bg-teal-700 px-6 py-4 font-mono text-[11px] font-black uppercase tracking-[0.18em] text-white hover:bg-white hover:text-black sm:w-auto" %>
+  <% end %>
+</section>
